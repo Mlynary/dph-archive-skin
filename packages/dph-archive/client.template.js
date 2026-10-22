@@ -1063,18 +1063,27 @@ button[class*="_newSession"]:hover svg {
   opacity: 0.72;
 }
 
-/* 18. blank-session hero mark: reuse the shell's own brand glyph */
+/* 18. blank-session hero mark: reuse the shell's own brand glyph.
+   Sizing is scoped to the hero slot so a stray clone can never resize the
+   sidebar mark (which is a 24x18 glyph inside a 24px cell). */
 [data-dph-hero] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+[data-slot="conversation.hero.brand.mark"] [data-dph-hero] {
   width: 44px;
   height: 44px;
   color: var(--dsw-alias-label-primary);
 }
-[data-dph-hero] svg {
+[data-slot="conversation.hero.brand.mark"] [data-dph-hero] svg {
   display: block;
   width: 40px;
+  height: auto;
+  max-width: 100%;
+}
+[data-slot="sidebar.brand.mark"] [data-dph-hero] svg {
+  width: 24px;
   height: auto;
 }
 
@@ -1255,6 +1264,8 @@ button[class*="_newSession"]:hover svg {
       const fromSlot = (whale) => {
         const slot = document.querySelector('[data-slot="conversation.hero.brand.mark"]');
         if (!slot || slot.querySelector('[data-dph-hero]')) return false;
+        // never touch the sidebar's own mark
+        if (slot.closest('aside, nav, [class*="sidebar"]')) return false;
         const host = mark(document.createElement('span'));
         const clone = whale.cloneNode(true);
         clone.removeAttribute('width');
@@ -1265,18 +1276,19 @@ button[class*="_newSession"]:hover svg {
         return true;
       };
 
-      // Fallback: anchor on the hero headline text, then swap the glyph that
-      // sits in the same block. Works even if the slot is renamed.
+      // Fallback for a renamed slot: anchor on the hero headline only. The
+      // sidebar is excluded on purpose - the brand row also carries brand text.
       const fromHeadline = (whale) => {
-        const labels = ['探索未至之境', 'Explore the unknown', 'DEEPSEEK'];
-        const all = document.querySelectorAll('h1, h2, h3, div, span, p');
+        const labels = ['探索未至之境', 'Explore the unknown'];
+        const all = document.querySelectorAll('h1, h2, h3, p, span');
         for (let i = 0; i < all.length; i += 1) {
           const el = all[i];
           if (el.children.length > 0 || !el.textContent) continue;
-          const text = el.textContent.trim();
-          if (labels.indexOf(text) < 0) continue;
+          if (labels.indexOf(el.textContent.trim()) < 0) continue;
+          if (el.closest('aside, nav, [class*="sidebar"]')) continue;
           let scope = el.parentElement;
           for (let depth = 0; depth < 3 && scope; depth += 1) {
+            if (scope.closest('aside, nav, [class*="sidebar"]')) break;
             const glyph = scope.querySelector('svg, img');
             if (glyph && !glyph.closest('[data-dph-hero]')) {
               const host = mark(document.createElement('span'));
