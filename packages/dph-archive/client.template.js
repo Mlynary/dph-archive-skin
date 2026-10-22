@@ -18,6 +18,8 @@ window.__ModuleLoader__.load({
     const SKIN = /*__SKIN__*/{};
 
     const BUILD = '2026-10-22';
+    // Use the plugin's own whale mark instead of the shell's DeepSeek glyph.
+    const USE_CUSTOM_MARK = false;
     let currentCtx = null;
 
     // ------------------------------------------------------------------
@@ -839,17 +841,14 @@ window.__ModuleLoader__.load({
     // App chrome: shape, surface, texture (colour tokens cannot do this)
     // ------------------------------------------------------------------
     const CHROME_CSS = `
-/* 1. zero radius: the whole shell is razor-sharp.
-   The .dpa-root subtree is excluded so the archive panel keeps its radius scale. */
-body *:not(.dpa-root, .dpa-root *) {
-  border-radius: 0 !important;
-}
-
+/* 1. shape: a 2px softness on controls only.
+   No blanket rule - the shell keeps its own geometry (avatars stay round),
+   and chrome stops looking like a grid of boxes. */
 button, input, textarea, select,
 [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="combobox"],
 [role="searchbox"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"],
 [role="tooltip"], [contenteditable="true"] {
-  border-radius: 0 !important;
+  border-radius: 2px !important;
 }
 
 /* 0. the shell types in the dossier stack */
@@ -904,7 +903,7 @@ hr, [role="separator"] {
   scrollbar-color: var(--dsw-alias-border-l2) transparent;
 }
 
-/* 9. the sheet: 32px hairline grid + paper grain over the whole frame */
+/* 9. the sheet: scanlines + vignette + 32px hairline grid + paper grain */
 body::after {
   content: "";
   position: fixed;
@@ -914,6 +913,8 @@ body::after {
   opacity: 0.6;
   mix-blend-mode: multiply;
   background-image:
+    repeating-linear-gradient(to bottom, rgba(11, 15, 13, 0.03) 0 1px, transparent 1px 4px),
+    radial-gradient(130% 92% at 50% 0%, transparent 54%, rgba(11, 15, 13, 0.07) 100%),
     repeating-linear-gradient(to right, rgba(11, 15, 13, 0.05) 0 1px, transparent 1px 32px),
     repeating-linear-gradient(to bottom, rgba(11, 15, 13, 0.05) 0 1px, transparent 1px 32px),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.32'/></svg>");
@@ -923,6 +924,8 @@ html[data-dph-skin="dark"] body::after {
   mix-blend-mode: screen;
   opacity: 0.42;
   background-image:
+    repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.02) 0 1px, transparent 1px 4px),
+    radial-gradient(130% 92% at 50% 0%, transparent 58%, rgba(0, 0, 0, 0.55) 100%),
     repeating-linear-gradient(to right, rgba(233, 229, 223, 0.045) 0 1px, transparent 1px 32px),
     repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.045) 0 1px, transparent 1px 32px);
 }
@@ -954,34 +957,73 @@ html[data-dph-skin] body::before {
   color: var(--dsw-alias-bg-base) !important;
 }
 
-/* 12. the selected row in a navigation list is an ink plate, not a tint */
+/* 12. ONE selected state everywhere: ink plate + 2px orange bar + paper text.
+   Covers session rows, sidebar panel rows (插件 / 自动化任务) and the settings
+   nav. The shell expresses "selected" differently in each place, so every
+   marker it might use is listed here. */
 [role="treeitem"][aria-selected="true"],
-[role="option"][aria-selected="true"] {
+[role="option"][aria-selected="true"],
+[class*="_panelRow"][aria-current],
+[class*="_panelRow"][aria-selected="true"],
+[class*="_panelRow"][data-active="true"],
+[class*="_panelRow"][class*="ctive"],
+[class*="_panel"][role="dialog"] [class*="_navCell"][aria-current="true"] {
   background-color: var(--dsw-alias-label-primary) !important;
   color: var(--dsw-alias-bg-base) !important;
   box-shadow: inset 2px 0 0 #FF7500 !important;
   border: 0 !important;
+  border-radius: 2px !important;
   outline: 0 !important;
 }
 [role="treeitem"][aria-selected="true"] *,
-[role="option"][aria-selected="true"] * {
+[role="option"][aria-selected="true"] *,
+[class*="_panelRow"][aria-current] *,
+[class*="_panelRow"][aria-selected="true"] *,
+[class*="_panelRow"][data-active="true"] *,
+[class*="_panelRow"][class*="ctive"] *,
+[class*="_panel"][role="dialog"] [class*="_navCell"][aria-current="true"] * {
   color: var(--dsw-alias-bg-base) !important;
+  -webkit-text-fill-color: var(--dsw-alias-bg-base) !important;
+  text-shadow: none !important;
+  background: transparent !important;
+}
+[role="treeitem"][aria-selected="true"] svg,
+[class*="_panelRow"][aria-current] svg,
+[class*="_panelRow"][class*="ctive"] svg {
+  stroke: currentColor;
+}
+/* hover must not wash the plate out */
+[role="treeitem"][aria-selected="true"]:hover,
+[class*="_panelRow"][aria-current]:hover,
+[class*="_panelRow"][aria-selected="true"]:hover,
+[class*="_panelRow"][data-active="true"]:hover,
+[class*="_panelRow"][class*="ctive"]:hover,
+[class*="_panel"][role="dialog"] [class*="_navCell"][aria-current="true"]:hover {
+  background-color: var(--dsw-alias-label-primary) !important;
 }
 
-/* a tab is underlined, not turned into a block */
+/* tabs keep their own shape: a black plate with an orange bottom edge */
 [role="tab"][aria-selected="true"] {
-  background-color: transparent !important;
-  color: var(--dsw-alias-label-primary) !important;
+  background-color: var(--dsw-alias-label-primary) !important;
+  color: var(--dsw-alias-bg-base) !important;
+  -webkit-text-fill-color: var(--dsw-alias-bg-base) !important;
   box-shadow: inset 0 -2px 0 #FF7500 !important;
   border: 0 !important;
 }
 
 [role="treeitem"] {
-  border-radius: 0 !important;
+  border-radius: 2px !important;
   border-left: 2px solid transparent !important;
 }
 [role="treeitem"]:hover {
   background-color: var(--dsw-alias-bg-layer-2) !important;
+}
+
+/* theme cubes in settings share the plate, without the bar */
+[class*="_panel"][role="dialog"] [class*="_themeCube"][aria-pressed="true"],
+[class*="_panel"][role="dialog"] [class*="_themeCube"][aria-pressed="true"] * {
+  -webkit-text-fill-color: var(--dsw-alias-bg-base) !important;
+  text-shadow: none !important;
 }
 
 /* 15. sidebar: workspaces header, new-session button, brand row */
@@ -1002,13 +1044,13 @@ html[data-dph-skin] body::before {
   background: transparent !important;
   border: 0 !important;
   border-bottom: 1px solid var(--dsw-alias-border-l2) !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
   font-size: 11px !important;
   letter-spacing: 0.04em !important;
 }
 [class*="_iconButton"] {
   border: 1px solid transparent !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
 }
 [class*="_iconButton"]:hover {
   border-color: var(--dsw-alias-border-l2) !important;
@@ -1017,7 +1059,7 @@ html[data-dph-skin] body::before {
 button[class*="_newSession"] {
   background: transparent !important;
   border: 1px solid var(--dsw-alias-border-l2) !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
   font-weight: 600 !important;
   letter-spacing: 0.06em !important;
 }
@@ -1034,13 +1076,379 @@ button[class*="_newSession"]:hover svg {
   letter-spacing: 0.02em !important;
 }
 
+/* 19. settings panel: dossier chrome for a modal that ships its own look */
+[class*="_panel"][role="dialog"] {
+  position: relative;
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 2px !important;
+  background: var(--dsw-alias-bg-base) !important;
+}
+/* registration ticks in the modal corners */
+[class*="_panel"][role="dialog"]::before,
+[class*="_panel"][role="dialog"]::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  border: 0 solid var(--dsw-alias-border-l2);
+  opacity: 0.85;
+}
+[class*="_panel"][role="dialog"]::before {
+  top: 6px;
+  left: 6px;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+[class*="_panel"][role="dialog"]::after {
+  right: 6px;
+  bottom: 6px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+}
+/* index plates in the settings nav, injected as data-dph-idx */
+[class*="_panel"][role="dialog"] [class*="_navCell"]::before {
+  content: attr(data-dph-idx);
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--dsw-alias-label-secondary);
+  opacity: 0.75;
+  flex: none;
+}
+[class*="_panel"][role="dialog"] [class*="_navCell"][aria-current="true"]::before {
+  color: var(--dsw-alias-label-primary);
+  opacity: 0.6;
+}
+[class*="_panel"][role="dialog"] [class*="_nav"] {
+  border-right: 1px solid var(--dsw-alias-border-l1) !important;
+  background: var(--dsw-specific-sidebar-fill) !important;
+}
+[class*="_panel"][role="dialog"] [class*="_navTitle"] {
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  padding-bottom: 8px;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.22em !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[class*="_panel"][role="dialog"] [class*="_navCell"] {
+  border-radius: 2px !important;
+  border-left: 2px solid transparent !important;
+  padding: 7px 10px !important;
+}
+[class*="_panel"][role="dialog"] [class*="_navCell"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+}
+/* the selected nav cell is handled by the shared plate rule (12) */
+[class*="_panel"][role="dialog"] [class*="_navLabel"] {
+  font-size: 12.5px !important;
+  letter-spacing: 0.05em !important;
+}
+[class*="_panel"][role="dialog"] [class*="_content"] [class*="_header"] {
+  border-bottom: 1px solid var(--dsw-alias-border-l1) !important;
+}
+[class*="_panel"][role="dialog"] [class*="_row"] {
+  border-bottom: 1px solid var(--dsw-alias-border-l1) !important;
+  border-radius: 2px !important;
+}
+[class*="_panel"][role="dialog"] [class*="_title"] {
+  letter-spacing: 0.03em !important;
+  font-weight: 600 !important;
+}
+[class*="_panel"][role="dialog"] [class*="_desc"] {
+  font-size: 11px !important;
+  letter-spacing: 0.02em !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[class*="_panel"][role="dialog"] [class*="_selector"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  padding: 3px 8px !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.03em !important;
+}
+[class*="_panel"][role="dialog"] [class*="_selector"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+  color: var(--dsw-alias-label-primary) !important;
+  border: 0 !important;
+}
+[class*="_panel"][role="dialog"] [class*="_selector"]:hover svg {
+  color: var(--dsw-alias-label-primary) !important;
+  stroke: currentColor;
+}
+[class*="_panel"][role="dialog"] [class*="_themeCube"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  letter-spacing: 0.04em !important;
+}
+[class*="_panel"][role="dialog"] [class*="_themeCube"][aria-pressed="true"] {
+  background: var(--dsw-alias-label-primary) !important;
+  color: var(--dsw-alias-bg-base) !important;
+  border: 0 !important;
+}
+[class*="_panel"][role="dialog"] [class*="_themeCube"][aria-pressed="true"] svg {
+  color: var(--dsw-alias-bg-base) !important;
+  stroke: currentColor;
+}
+[class*="_panel"][role="dialog"] [class*="_stepper"],
+[class*="_panel"][role="dialog"] [class*="_arrow"],
+[class*="_panel"][role="dialog"] [class*="_expander"] {
+  border-radius: 2px !important;
+}
+[class*="_panel"][role="dialog"] [class*="_arrow"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+}
+[class*="_panel"][role="dialog"] [class*="_close"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+}
+[class*="_panel"][role="dialog"] [class*="_close"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+}
+
+/* 28. Synapse: the floating view switch in the host document.
+   It sits at top:12px, inside the window-drag band of the header, so it needs
+   an explicit no-drag region - otherwise clicks are swallowed by the drag
+   layer before they reach the buttons. */
+.dsh-synapse-switch {
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 2px !important;
+  background: var(--dsw-alias-bg-base) !important;
+  padding: 2px !important;
+  backdrop-filter: none !important;
+  gap: 2px !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+.dsh-synapse-switch button {
+  height: 22px !important;
+  border-radius: 2px !important;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+.dsh-synapse-switch button:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+.dsh-synapse-switch button.active {
+  background: var(--dsw-alias-label-primary) !important;
+  color: var(--dsw-alias-bg-base) !important;
+  -webkit-text-fill-color: var(--dsw-alias-bg-base) !important;
+}
+.dsh-synapse-overlay {
+  background: var(--dsw-alias-bg-base) !important;
+}
+
+/* 22. view tabs: the active one is an ink plate */
+[data-conversation-tabs] {
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+[data-conversation-tabs] [role="tab"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+  padding: 3px 11px !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[data-conversation-tabs] [role="tab"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+[data-conversation-tabs] [role="tab"][aria-selected="true"] {
+  background: var(--dsw-alias-label-primary) !important;
+  border: 0 !important;
+  color: var(--dsw-alias-bg-base) !important;
+  -webkit-text-fill-color: var(--dsw-alias-bg-base) !important;
+  box-shadow: none !important;
+}
+
+/* 23. hero sub-caption, injected after the blank-session headline */
+.dpa-hero-sub {
+  margin-top: 8px;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-secondary);
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* 24. composer card: hairline frame + corner ticks + measuring rule */
+[data-composer-card] {
+  position: relative;
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 2px !important;
+  background: var(--dsw-alias-bg-layer-1) !important;
+}
+[data-composer-card]::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  opacity: 0.6;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--dsw-alias-border-l2), var(--dsw-alias-border-l2)),
+    linear-gradient(var(--dsw-alias-border-l2), var(--dsw-alias-border-l2)),
+    linear-gradient(var(--dsw-alias-border-l2), var(--dsw-alias-border-l2)),
+    linear-gradient(var(--dsw-alias-border-l2), var(--dsw-alias-border-l2));
+  background-size:
+    9px 1px, 1px 9px,
+    9px 1px, 1px 9px;
+  background-position:
+    left top, left top,
+    right bottom, right bottom;
+}
+[data-composer-card]::after {
+  content: none;
+}
+
+/* 25. sidebar panel rows (插件 / 自动化任务): the active row is an ink plate.
+   The shell may express "selected" as aria-current, aria-selected, a data flag
+   or a class suffix, so all four are covered. The fill is forced explicitly
+   because the shell paints some labels with -webkit-text-fill-color. */
+[class*="_panelRow"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+}
+
+/* 26. flat pass: depth comes from 1px rules only, never from shadows */
+[role="dialog"],
+[role="alertdialog"],
+[role="menu"],
+[role="listbox"],
+[role="tooltip"],
+[class*="_panel"][role="dialog"] {
+  box-shadow: none !important;
+}
+
+/* 27. composer tool row: equal small plates, hairline on hover */
+[data-composer-card] [class*="_add"],
+[data-composer-card] [class*="_activity"] button {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[data-composer-card] [class*="_add"]:hover,
+[data-composer-card] [class*="_activity"] button:hover {
+  border-color: var(--dsw-alias-border-l2) !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+
+/* permission + model selectors: no box, just a quiet plate that lights on hover */
+[data-composer-card] [class*="_trigger"] {
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  padding: 2px 7px !important;
+  font-size: 11px !important;
+  letter-spacing: 0.04em !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[data-composer-card] [class*="_trigger"]:hover {
+  background: var(--dsw-alias-bg-layer-2) !important;
+  color: var(--dsw-alias-label-primary) !important;
+  border: 0 !important;
+}
+[data-composer-card] [class*="_trigger"] svg {
+  opacity: 0.7;
+}
+
+/* send: an ink square, orange on hover, outlined when disabled */
+[data-composer-card] [class*="_primary"] {
+  min-width: 28px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--dsw-alias-label-primary) !important;
+  border-radius: 2px !important;
+  background: var(--dsw-alias-label-primary) !important;
+  color: var(--dsw-alias-bg-base) !important;
+}
+[data-composer-card] [class*="_primary"] svg {
+  fill: currentColor;
+  stroke: currentColor;
+}
+[data-composer-card] [class*="_primary"]:not(:disabled):hover {
+  background: #FF7500 !important;
+  border-color: #FF7500 !important;
+  color: #0B0F0D !important;
+}
+[data-composer-card] [class*="_primary"]:disabled {
+  background: transparent !important;
+  border-color: var(--dsw-alias-border-l2) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  opacity: 0.55;
+}
+
+/* 20. conversation: a turn band, like a ruled line on a file card */
+[data-dph-turn]::before {
+  content: "T-" attr(data-dph-turn);
+  display: block;
+  padding: 12px 0 6px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-secondary);
+  opacity: 0.7;
+}
+
+/* 21. status corner: page serial, bottom right, never intercepts clicks */
+.dpa-status {
+  position: fixed;
+  right: 15px;
+  bottom: 7px;
+  z-index: 61;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-secondary);
+  opacity: 0.55;
+}
+.dpa-status > .sep {
+  color: var(--dsw-alias-brand-primary);
+  opacity: 0.9;
+}
+
 /* 16. header utilities: explorer / more / right-panel are one hairline trio */
 [class*="_headerUtilities"] button,
 [class*="_headerCorner"] button,
 [class*="_headerUtilities"] a,
 [class*="_headerCorner"] a {
   border: 1px solid transparent !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
   background: transparent !important;
 }
 [class*="_headerUtilities"] button:hover,
@@ -1063,28 +1471,23 @@ button[class*="_newSession"]:hover svg {
   opacity: 0.72;
 }
 
-/* 18. blank-session hero mark: reuse the shell's own brand glyph.
-   Sizing is scoped to the hero slot so a stray clone can never resize the
-   sidebar mark (which is a 24x18 glyph inside a 24px cell). */
-[data-dph-hero] {
+/* 18. brand glyph: one original whale mark, used in the sidebar and the hero.
+   Drawn as hairline linework with a single orange square as the eye. */
+[data-dph-brand] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: inherit;
+  line-height: 0;
 }
-[data-slot="conversation.hero.brand.mark"] [data-dph-hero] {
-  width: 44px;
-  height: 44px;
-  color: var(--dsw-alias-label-primary);
-}
-[data-slot="conversation.hero.brand.mark"] [data-dph-hero] svg {
+[data-dph-brand] svg {
   display: block;
-  width: 40px;
-  height: auto;
-  max-width: 100%;
-}
-[data-slot="sidebar.brand.mark"] [data-dph-hero] svg {
   width: 24px;
   height: auto;
+  overflow: visible;
+}
+[data-slot="conversation.hero.brand.mark"] [data-dph-brand] svg {
+  width: 44px;
 }
 
 /* 17. bottom-left account row */
@@ -1093,7 +1496,7 @@ button[class*="_newSession"]:hover svg {
   padding-top: 4px;
 }
 [class*="_trigger"] {
-  border-radius: 0 !important;
+  border-radius: 2px !important;
 }
 [class*="_trigger"] [class*="_label"] {
   font-size: 11px !important;
@@ -1207,17 +1610,22 @@ button[class*="_newSession"]:hover svg {
       }
     }
 
-    function BrandMark(props) {
-      const size = (props && (props.size || props.width)) || 24;
-      return h('svg', {
-        viewBox: '0 0 64 64', width: size, height: size, 'aria-hidden': true,
-        style: { display: 'block', color: 'currentColor' },
-      },
-        h('path', { d: 'M12 10H40L52 22V54H12Z', fill: 'none', stroke: 'currentColor', strokeWidth: 4 }),
-        h('path', { d: 'M40 10V22H52', fill: 'none', stroke: 'currentColor', strokeWidth: 4 }),
-        h('rect', { x: 21, y: 28, width: 20, height: 16, fill: 'currentColor' }),
-        h('rect', { x: 45, y: 44, width: 6, height: 6, fill: '#FF7500' })
-      );
+    // Original whale mark: hairline profile, fluke, spout and one orange square
+    // for the eye. Markup is shared by the React component and the runtime
+    // injector so the sidebar and the hero can never drift apart.
+    const WHALE_SVG =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 20" fill="none" aria-hidden="true">' +
+      '<path fill-rule="evenodd" clip-rule="evenodd" d="M2.8 10.2C2.8 7 7 4.6 12 4.8C17.5 5 21.5 6.4 23.6 8.6C23.9 8.9 24 9.2 23.9 9.5C21.9 11.9 17.5 13.6 12.4 13.8C8 14 4.4 12.6 3.2 11.2C2.9 10.8 2.8 10.5 2.8 10.2ZM3.35 10.85L7.1 10.3L6.85 11.25ZM6.9 7.85A1.05 1.05 0 1 0 6.9 9.95A1.05 1.05 0 1 0 6.9 7.85Z" fill="currentColor"/>' +
+      '<path d="M23.8 9.5L30.2 5.2C30.9 4.8 31.4 5.4 31 6.2L28.6 9.5L31 12.8C31.4 13.6 30.9 14.2 30.2 13.8L23.8 9.5Z" fill="currentColor"/>' +
+      '<path d="M10.4 13.1C12.1 14.3 13.5 15.9 14.3 17.5C14.6 18.1 13.9 18.5 13.3 18.1C11.5 16.7 10.1 15.1 9.3 13.5Z" fill="currentColor"/>' +
+      '</svg>';
+
+    function BrandMark() {
+      return h('span', {
+        'data-dph-brand': '1',
+        'aria-hidden': true,
+        dangerouslySetInnerHTML: { __html: WHALE_SVG },
+      });
     }
 
     function Icon(props) {
@@ -1245,78 +1653,405 @@ button[class*="_newSession"]:hover svg {
       );
     }
 
-    // The blank-session hero should carry the shell's own brand glyph (the whale).
-    // It is cloned from the sidebar mark at runtime, so no copy of the logo ships
-    // with the plugin and it always matches the app's current artwork.
-    function mountHeroMark(ctx) {
+    function StatusCorner() {
+      const [now, setNow] = useState(() => new Date());
+      useEffect(() => {
+        const id = setInterval(() => setNow(new Date()), 30000);
+        return () => clearInterval(id);
+      }, []);
+      const pad = (n) => (n < 10 ? '0' + n : '' + n);
+      return h('div', { className: 'dpa-status', 'aria-hidden': true },
+        h('span', null, 'DPH ARCHIVE OS'),
+        h('span', { className: 'sep' }, '/'),
+        h('span', null, 'REV 03'),
+        h('span', { className: 'sep' }, '/'),
+        h('span', null, pad(now.getHours()) + ':' + pad(now.getMinutes()))
+      );
+    }
+
+    // One original whale mark for both surfaces: the sidebar brand slot and
+    // the blank-session hero. Insert-only and idempotent - it swaps the glyph
+    // inside those two slots and touches nothing else.
+    function installBrandGlyph(ctx) {
       if (typeof document === 'undefined') return;
-
-      const brandGlyph = () =>
-        document.querySelector('[data-slot="sidebar.brand.mark"] svg') ||
-        document.querySelector('[class*="_brandMark"] svg');
-
-      const mark = (host) => {
-        host.setAttribute('data-dph-hero', '1');
-        host.setAttribute('aria-hidden', 'true');
-        return host;
-      };
-
-      const fromSlot = (whale) => {
-        const slot = document.querySelector('[data-slot="conversation.hero.brand.mark"]');
-        if (!slot || slot.querySelector('[data-dph-hero]')) return false;
-        // never touch the sidebar's own mark
-        if (slot.closest('aside, nav, [class*="sidebar"]')) return false;
-        const host = mark(document.createElement('span'));
-        const clone = whale.cloneNode(true);
-        clone.removeAttribute('width');
-        clone.removeAttribute('height');
-        host.appendChild(clone);
-        slot.textContent = '';
-        slot.appendChild(host);
-        return true;
-      };
-
-      // Fallback for a renamed slot: anchor on the hero headline only. The
-      // sidebar is excluded on purpose - the brand row also carries brand text.
-      const fromHeadline = (whale) => {
-        const labels = ['探索未至之境', 'Explore the unknown'];
-        const all = document.querySelectorAll('h1, h2, h3, p, span');
-        for (let i = 0; i < all.length; i += 1) {
-          const el = all[i];
-          if (el.children.length > 0 || !el.textContent) continue;
-          if (labels.indexOf(el.textContent.trim()) < 0) continue;
-          if (el.closest('aside, nav, [class*="sidebar"]')) continue;
-          let scope = el.parentElement;
-          for (let depth = 0; depth < 3 && scope; depth += 1) {
-            if (scope.closest('aside, nav, [class*="sidebar"]')) break;
-            const glyph = scope.querySelector('svg, img');
-            if (glyph && !glyph.closest('[data-dph-hero]')) {
-              const host = mark(document.createElement('span'));
-              const clone = whale.cloneNode(true);
-              clone.removeAttribute('width');
-              clone.removeAttribute('height');
-              host.appendChild(clone);
-              glyph.parentNode.insertBefore(host, glyph);
-              glyph.remove();
-              return true;
-            }
-            scope = scope.parentElement;
-          }
-        }
-        return false;
-      };
-
+      const slots = [
+        '[data-slot="sidebar.brand.mark"]',
+        '[data-slot="conversation.hero.brand.mark"]',
+      ];
       const paint = () => {
-        const whale = brandGlyph();
-        if (!whale) return;
-        if (!fromSlot(whale)) fromHeadline(whale);
+        for (let i = 0; i < slots.length; i += 1) {
+          const slot = document.querySelector(slots[i]);
+          if (!slot || slot.querySelector('[data-dph-brand]')) continue;
+          const host = document.createElement('span');
+          host.setAttribute('data-dph-brand', '1');
+          host.setAttribute('aria-hidden', 'true');
+          host.innerHTML = WHALE_SVG;
+          slot.textContent = '';
+          slot.appendChild(host);
+        }
       };
-
       paint();
       const timer = setInterval(paint, 1200);
       try {
         if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
       } catch (e) { /* keep the timer */ }
+    }
+
+    // Diagnostic helper: write the current DOM to a file I can read back.
+    function dumpDom(name) {
+      try {
+        const clone = document.body.cloneNode(true);
+        clone.querySelectorAll('style, script, link').forEach((n) => n.remove());
+        clone.querySelectorAll('svg').forEach((n) => { n.innerHTML = ''; });
+        const blob = new Blob(['<!-- dump -->\n' + clone.outerHTML], { type: 'text/html;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Manual diagnostic trigger: Ctrl+Alt+D writes the current DOM to a file.
+    function bindDumpShortcut() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return;
+      try {
+        window.addEventListener('keydown', (e) => {
+          if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) {
+            e.preventDefault();
+            dumpDom('dsh-dom-dump.html');
+          }
+        }, true);
+      } catch (e) { /* no keyboard */ }
+    }
+
+    // Small typographic details that need a DOM hook: index plates on the
+    // settings navigation cells. Idempotent, cheap, re-runs after re-renders.
+    function decorateSettings(ctx) {
+      if (typeof document === 'undefined') return;
+      const paint = () => {
+        try {
+          const cells = document.querySelectorAll('[class*="_navCell"]');
+          for (let i = 0; i < cells.length; i += 1) {
+            const el = cells[i];
+            if (el.hasAttribute('data-dph-idx')) continue;
+            el.setAttribute('data-dph-idx', ('0' + (i + 1)).slice(-2));
+          }
+        } catch (e) { /* keep the timer */ }
+      };
+      paint();
+      const timer = setInterval(paint, 1500);
+      try {
+        if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
+      } catch (e) { /* keep the timer */ }
+    }
+
+    // Conversation turn bands: mark the first row of each turn so CSS can draw
+    // a ruled line + serial above it, like a file-card divider.
+    function decorateChat(ctx) {
+      if (typeof document === 'undefined') return;
+      const paint = () => {
+        try {
+          const rows = document.querySelectorAll('[data-chat-flow-key]');
+          let lastTurn = null;
+          for (let i = 0; i < rows.length; i += 1) {
+            const el = rows[i];
+            const turn = el.getAttribute('data-chat-turn');
+            if (!turn || turn === lastTurn) continue;
+            lastTurn = turn;
+            if (!el.hasAttribute('data-dph-turn')) {
+              el.setAttribute('data-dph-turn', ('0' + turn).slice(-2));
+            }
+          }
+        } catch (e) { /* keep the timer */ }
+      };
+      paint();
+      const timer = setInterval(paint, 1500);
+      try {
+        if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
+      } catch (e) { /* keep the timer */ }
+    }
+
+    // Hero sub-caption: a single micro line under the blank-session headline.
+    // Only inserts, never removes, so it cannot clip the headline or the mark.
+    function decorateHero(ctx) {
+      if (typeof document === 'undefined') return;
+      let ticks = 0;
+      const paint = () => {
+        ticks += 1;
+        if (document.querySelector('.dpa-hero-sub')) return true;
+        const nodes = document.querySelectorAll('h1, h2');
+        for (let i = 0; i < nodes.length; i += 1) {
+          const el = nodes[i];
+          const text = (el.textContent || '').trim();
+          if (text !== '探索未至之境' && text !== 'Explore the unknown') continue;
+          if (el.closest('aside, nav, [class*="sidebar"]')) continue;
+          const sub = document.createElement('div');
+          sub.className = 'dpa-hero-sub';
+          sub.setAttribute('aria-hidden', 'true');
+          sub.textContent = 'DPH ARCHIVE OS / REV 03';
+          el.insertAdjacentElement('afterend', sub);
+          return true;
+        }
+        return false;
+      };
+      if (paint()) return;
+      const timer = setInterval(() => {
+        if (paint() || ticks > 40) clearInterval(timer);
+      }, 1500);
+      try {
+        if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
+      } catch (e) { /* keep the timer */ }
+    }
+
+    // ------------------------------------------------------------------
+    // Synapse map page: it lives in a same-origin iframe at /synapse/, so its
+    // own stylesheet can be overridden by writing a sheet into that document.
+    // ------------------------------------------------------------------
+    const SYNAPSE_CSS = `
+html, body { background: #E7E4DF !important; color: #0B0F0D !important; }
+body, .synapse-shell { font-family: "Inter", "Segoe UI", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif !important; }
+.synapse-shell, .main-stage, .canvas-view, .canvas-viewport { background: #E7E4DF !important; }
+/* the map page covers the whole window: leave room for the host menu bar */
+.synapse-shell { padding-top: 34px !important; }
+/* the host already renders a view switch - this one is a duplicate */
+.view-switch { display: none !important; }
+/* clear the native window buttons in the top-right corner */
+.canvas-controls { top: 46px !important; right: 14px !important; }
+.topbar, .canvas-tabs { background: transparent !important; border-color: rgba(11,15,13,.16) !important; }
+.sidebar { background: #DDD9D2 !important; border-right: 1px solid rgba(11,15,13,.16) !important; }
+.sidebar-brand-row { height: 46px !important; margin-bottom: 6px !important; padding: 4px 0 4px 4px !important; }
+.brand strong { font-size: 16px !important; letter-spacing: .02em !important; }
+.brand::before { width: 26px !important; height: 22px !important; }
+.brand::after { border-radius: 2px !important; background: #0B0F0D !important; letter-spacing: .12em !important; }
+button, .new-workspace, .canvas-controls button {
+  border-radius: 2px !important;
+  border: 1px solid rgba(11,15,13,.2) !important;
+  background: transparent !important;
+  color: #0B0F0D !important;
+  box-shadow: none !important;
+}
+button:hover, .new-workspace:hover { background: #DDD9D2 !important; color: #0B0F0D !important; }
+button.primary { background: #0B0F0D !important; border-color: #0B0F0D !important; color: #E7E4DF !important; }
+.view-switch { border-radius: 2px !important; background: #F2EFEA !important; border: 1px solid rgba(11,15,13,.24) !important; box-shadow: none !important; }
+.view-switch button { border-radius: 2px !important; letter-spacing: .1em !important; font-size: 11px !important; }
+.view-switch button.active { background: #0B0F0D !important; color: #E7E4DF !important; }
+.canvas-tabs button { border-radius: 2px !important; border-bottom: 2px solid transparent !important; }
+.canvas-tabs button.active { border-bottom-color: #FF7500 !important; color: #0B0F0D !important; }
+.thread-card {
+  border-radius: 2px !important;
+  background: #F2EFEA !important;
+  border: 1px solid rgba(11,15,13,.2) !important;
+  box-shadow: none !important;
+}
+.thread-card:hover { border-color: rgba(11,15,13,.45) !important; box-shadow: none !important; }
+.thread-card.selected { border-color: #0B0F0D !important; box-shadow: inset 2px 0 0 #FF7500 !important; }
+.connectors path { stroke: rgba(11,15,13,.26) !important; }
+.connectors path.active-connector, .connectors .draft-connector { stroke: #FF7500 !important; }
+.tree-row { border-radius: 2px !important; }
+.tree-row:hover { background: rgba(11,15,13,.06) !important; }
+.tree-row.active { background: #0B0F0D !important; color: #E7E4DF !important; box-shadow: inset 2px 0 0 #FF7500; }
+.tree-row.active span, .tree-row.active i { color: #E7E4DF !important; }
+.tree-dot, .topic-dot { border-radius: 0 !important; background: #FF7500 !important; }
+input, select, textarea {
+  border-radius: 2px !important;
+  border: 1px solid rgba(11,15,13,.24) !important;
+  background: #F2EFEA !important;
+  color: #0B0F0D !important;
+}
+.status-message { border-radius: 2px !important; box-shadow: none !important; }
+
+/* --- card chrome: a serial, a corner tick, dense mono metadata --- */
+.cards-layer { counter-reset: synapse-card; }
+.thread-card { counter-increment: synapse-card; }
+.thread-card::before {
+  content: "N° " counter(synapse-card, decimal-leading-zero);
+  position: absolute;
+  top: 7px;
+  right: 11px;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: #6E736E;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.thread-card::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid rgba(11,15,13,.35);
+  border-bottom: 1px solid rgba(11,15,13,.35);
+  pointer-events: none;
+}
+.thread-card-head { padding: 14px 12px 6px !important; }
+.thread-title { font-size: 12.5px !important; letter-spacing: .01em !important; color: #0B0F0D !important; }
+.thread-meta { font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important; font-size: 9px !important; letter-spacing: .08em !important; color: #6E736E !important; }
+.thread-meta .card-process-count {
+  border: 1px solid rgba(11,15,13,.28) !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: #A34700 !important;
+  font-size: 9px !important;
+  letter-spacing: .1em !important;
+}
+.thread-answer { font-size: 11.5px !important; line-height: 1.65 !important; color: #3A403C !important; }
+.thread-answer code { background: #E7E4DF !important; border-radius: 2px !important; color: #0B0F0D !important; }
+.thread-answer pre { background: #E7E4DF !important; border: 1px solid rgba(11,15,13,.14) !important; border-radius: 2px !important; }
+.thread-answer th { background: #E7E4DF !important; }
+.thread-answer th, .thread-answer td { border-color: rgba(11,15,13,.16) !important; }
+.thread-answer::-webkit-scrollbar-thumb { background: rgba(11,15,13,.3) !important; border-radius: 0 !important; }
+.thread-card footer { border-top-color: rgba(11,15,13,.12) !important; }
+.thread-card footer button { font-size: 10.5px !important; letter-spacing: .04em !important; }
+
+/* --- detail panel: a filed record, not a floating sheet --- */
+.card-inspector { background: #F2EFEA !important; border-left: 1px solid rgba(11,15,13,.2) !important; }
+.card-inspector-head { background: transparent !important; border-bottom: 1px solid rgba(11,15,13,.12); padding: 16px 20px 10px !important; }
+.card-inspector-head h2 { font-size: 14px !important; letter-spacing: .01em !important; color: #0B0F0D !important; }
+.card-inspector-meta { font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important; font-size: 9px !important; letter-spacing: .1em !important; color: #6E736E !important; }
+.card-inspector-close { border-radius: 2px !important; }
+.card-inspector-scroll { padding: 18px 20px 20px !important; }
+.card-inspector-answer { font-size: 12.5px !important; line-height: 1.7 !important; color: #2A2F2B !important; }
+.card-inspector-answer h1, .card-inspector-answer h2, .card-inspector-answer h3 { font-size: 14px !important; color: #0B0F0D !important; letter-spacing: .01em !important; }
+.card-inspector-answer blockquote { border-left: 2px solid #FF7500 !important; color: #4C514C !important; }
+.card-inspector-answer code { background: #E7E4DF !important; border-radius: 2px !important; color: #0B0F0D !important; }
+.card-inspector-answer pre { background: #E7E4DF !important; border: 1px solid rgba(11,15,13,.14) !important; border-radius: 2px !important; }
+
+/* --- view tabs: the active one is an ink plate, like the host --- */
+.canvas-tabs { padding: 0 20px !important; gap: 4px !important; height: 34px !important; }
+.canvas-tabs button { margin-bottom: 4px !important; padding: 3px 11px !important; font-size: 11px !important; letter-spacing: .1em !important; }
+.canvas-tabs button.active {
+  background: #0B0F0D !important;
+  color: #E7E4DF !important;
+  border-bottom-color: transparent !important;
+  border-radius: 2px !important;
+}
+
+/* --- sidebar tree: a filed index, not a list of chips --- */
+.sidebar-heading span, .workspace-label > span {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase;
+  color: #6E736E !important;
+}
+.workspace-label select { border-radius: 2px !important; font-size: 11.5px !important; }
+.tree-row { padding: 5px 6px !important; font-size: 11.5px !important; }
+.tree-row i {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+}
+.new-workspace { border: 1px solid rgba(11,15,13,.24) !important; background: transparent !important; border-radius: 2px !important; font-size: 12.5px !important; }
+
+/* --- canvas chrome: squares instead of circles, mono readouts --- */
+.node-handle { width: 30px !important; height: 12px !important; top: -7px !important; border-radius: 2px !important; border-color: rgba(11,15,13,.24) !important; background: #F2EFEA !important; }
+.node-handle::after { content: "≡" !important; margin: 0 !important; font-size: 10px !important; letter-spacing: 0 !important; color: #6E736E !important; }
+.graph-continue-button, .graph-fold-button, .graph-branch-button {
+  border-radius: 2px !important;
+  border-color: rgba(11,15,13,.28) !important;
+  background: #F2EFEA !important;
+  color: #0B0F0D !important;
+}
+.graph-continue-button:hover, .graph-fold-button:hover, .graph-branch-button:hover { background: #0B0F0D !important; color: #E7E4DF !important; }
+.canvas-controls span {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+  color: #4C514C !important;
+}
+.selection-followup {
+  background: #0B0F0D !important;
+  border-color: #0B0F0D !important;
+  color: #E7E4DF !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.1em !important;
+}
+.empty-canvas strong, .compare-empty strong {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 12px !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase;
+  color: #4C514C !important;
+}
+.draft-card { border-color: rgba(11,15,13,.3) !important; background: #F2EFEA !important; box-shadow: none !important; }
+.draft-quick-phrase, .draft-quick-phrase-add-button { border-radius: 2px !important; border-color: rgba(11,15,13,.24) !important; background: transparent !important; color: #4C514C !important; }
+.draft-quick-phrase:hover, .draft-quick-phrase-add-button:hover { border-color: #0B0F0D !important; background: transparent !important; color: #0B0F0D !important; }
+
+/* --- detail view: one filed record on paper --- */
+.detail-view { background: #E7E4DF !important; }
+.detail-head { padding: 20px 28px 14px !important; border-bottom: 1px solid rgba(11,15,13,.16) !important; }
+.detail-head h1 { font-size: 19px !important; letter-spacing: .01em !important; color: #0B0F0D !important; }
+.detail-subtitle { font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important; font-size: 9px !important; letter-spacing: .1em !important; color: #6E736E !important; }
+.detail-badge {
+  border: 1px solid rgba(11,15,13,.24) !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: #A34700 !important;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: .12em !important;
+}
+.detail-badge::before { border-radius: 0 !important; background: #FF7500 !important; }
+.detail-head-actions button { border-radius: 2px !important; border-color: rgba(11,15,13,.24) !important; background: transparent !important; color: #0B0F0D !important; font-size: 11px !important; }
+.detail-head-actions button.primary { background: #0B0F0D !important; border-color: #0B0F0D !important; color: #E7E4DF !important; }
+.detail-scroll { padding: 16px 28px 20px !important; gap: 8px !important; }
+.message { border-radius: 2px !important; border-color: rgba(11,15,13,.16) !important; background: #F2EFEA !important; box-shadow: none !important; }
+.message header {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: .1em !important;
+  color: #6E736E !important;
+}
+.message time { font-size: 9px !important; letter-spacing: .08em !important; color: #6E736E !important; }
+.message-avatar { border-radius: 2px !important; width: 14px !important; height: 14px !important; background: #0B0F0D !important; }
+.message-user { background: #DDD9D2 !important; }
+.message-assistant { border-left: 2px solid #FF7500 !important; }
+.message-body p { font-size: 12.5px !important; line-height: 1.7 !important; color: #2A2F2B !important; }
+.message-body code { background: #E7E4DF !important; border-radius: 2px !important; color: #0B0F0D !important; }
+.message-body pre { background: #E7E4DF !important; border: 1px solid rgba(11,15,13,.14) !important; border-radius: 2px !important; }
+`;
+
+    function skinSynapse() {
+      if (typeof document === 'undefined') return;
+      const paint = () => {
+        let frame = null;
+        try {
+          frame = document.querySelector('.dsh-synapse-overlay iframe');
+        } catch (e) { return; }
+        if (!frame) return;
+        if (!frame.__dphBound) {
+          frame.__dphBound = true;
+          try { frame.addEventListener('load', paint); } catch (e) { /* ignore */ }
+        }
+        let doc = null;
+        try {
+          doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+        } catch (e) { return; }
+        if (!doc || !doc.head) return;
+        if (doc.querySelector('style[data-dph-synapse]')) return;
+        const sheet = doc.createElement('style');
+        sheet.setAttribute('data-dph-synapse', '');
+        sheet.textContent = SYNAPSE_CSS;
+        doc.head.appendChild(sheet);
+        try { doc.documentElement.setAttribute('data-dph-synapse', '1'); } catch (e) { /* ignore */ }
+      };
+      paint();
+      const timer = setInterval(paint, 1000);
+      try { document.addEventListener('load', paint, true); } catch (e) { /* no capture */ }
+      return timer;
     }
 
     return {
@@ -1359,16 +2094,42 @@ button[class*="_newSession"]:hover svg {
         };
 
         // ---- 3. identity slots --------------------------------------
-        slot('sidebar.brand.mark', { name: 'sidebar.brand.mark', id: 'dph-brand' }, BrandMark);
-        slot('conversation.hero.brand.mark', { name: 'conversation.hero.brand.mark' }, BrandMark);
+        // Off by default: the shell's own DeepSeek whale is the brand mark.
+        // Flip USE_CUSTOM_MARK to bring the plugin's own glyph back.
+        if (USE_CUSTOM_MARK) {
+          slot('sidebar.brand.mark', { name: 'sidebar.brand.mark', id: 'dph-brand' }, BrandMark);
+          slot('conversation.hero.brand.mark', { name: 'conversation.hero.brand.mark' }, BrandMark);
+        }
 
         // ---- 5. composer framing ------------------------------------
         slot('conversation.input.dock', {
           name: 'conversation.input.dock', id: 'dph-input-dock', order: 10,
         }, ComposerDock);
 
-        // ---- 6. hero mark -------------------------------------------
-        mountHeroMark(ctx);
+        // ---- 6. brand glyph (sidebar + hero) ------------------------
+        if (USE_CUSTOM_MARK) {
+          installBrandGlyph(ctx);
+        } else {
+          // the shell's own whale is the mark: clear any glyph a previous
+          // generation of this plugin left behind
+          try {
+            document.querySelectorAll('[data-dph-brand]').forEach((n) => n.remove());
+          } catch (e) { /* nothing to clean */ }
+        }
+
+        // ---- 7. manual DOM dump shortcut (Ctrl+Alt+D) ---------------
+        bindDumpShortcut();
+
+        // ---- 8. typographic details --------------------------------
+        decorateSettings(ctx);
+        decorateChat(ctx);
+        decorateHero(ctx);
+
+        // ---- 9. status corner --------------------------------------
+        slot('shell.overlay', { name: 'shell.overlay', id: 'dph-status', order: 95 }, StatusCorner);
+
+        // ---- 10. Synapse map page (same-origin iframe) --------------
+        skinSynapse();
       },
     };
   },
