@@ -1,0 +1,14 @@
+# local analysis workspace: source video, frames, checks, screenshots
+runs/
+
+# local tooling: ffmpeg, yt-dlp, node_modules, render harness
+tools/
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# build artefacts that can be regenerated
+*.zip
+*.7z

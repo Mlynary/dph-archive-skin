@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="DPH Archive OS">
+  <rect width="64" height="64" fill="#E7E4DF"/>
+  <path d="M12 10H40L52 22V54H12Z" fill="none" stroke="#101512" stroke-width="3.5"/>
+  <path d="M40 10V22H52" fill="none" stroke="#101512" stroke-width="3.5"/>
+  <rect x="22" y="28" width="19" height="16" fill="#101512"/>
+  <rect x="44" y="44" width="6" height="6" fill="#F77304"/>
+</svg>
