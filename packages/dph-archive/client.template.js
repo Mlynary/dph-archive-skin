@@ -2311,13 +2311,13 @@ button[class*="_newSession"]:hover svg {
 [role="tree"] { counter-reset: dph-sess; }
 [data-row-key^="session:"] {
   position: relative !important;
-  padding-left: 30px !important;
+  padding-left: 34px !important;
   counter-increment: dph-sess;
 }
 [data-row-key^="session:"]::before {
   content: counter(dph-sess, decimal-leading-zero);
   position: absolute;
-  left: 7px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
@@ -2326,6 +2326,21 @@ button[class*="_newSession"]:hover svg {
   letter-spacing: 0.08em;
   opacity: 0.42;
   pointer-events: none;
+}
+/* status lamp: idle is a hairline square, running is the accent */
+[data-row-key^="session:"]::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translateY(-50%);
+  background: var(--dsw-alias-border-l2);
+  pointer-events: none;
+}
+[data-row-key^="session:"][data-dph-run="1"]::after {
+  background: #FF7500;
 }
 [data-row-key^="session:"][aria-selected="true"]::before { opacity: 0.75; }
 /* workspace rows keep the app face: mono tracking on Chinese reads as noise */
@@ -2797,8 +2812,14 @@ button[class*="_newSession"]:hover svg {
     // group header can carry its own tally like a file divider.
     function decorateSidebar(ctx) {
       if (typeof document === 'undefined') return;
+      const readLive = () => {
+        try {
+          return (ctx.sessions && ctx.sessions.list && ctx.sessions.list.getSnapshot()) || null;
+        } catch (e) { return null; }
+      };
       const paint = () => {
         try {
+          const live = readLive();
           const rows = document.querySelectorAll('[data-row-key]');
           let current = null;
           let tally = 0;
@@ -2816,8 +2837,13 @@ button[class*="_newSession"]:hover svg {
               flush();
               current = row;
               tally = 0;
-            } else if (key.indexOf('session:') === 0 && current) {
-              tally += 1;
+            } else if (key.indexOf('session:') === 0) {
+              if (current) tally += 1;
+              // status lamp: read the live running flag from the catalog
+              const id = key.slice('session:'.length);
+              const meta = live && live.byId ? live.byId[id] : null;
+              const run = meta && meta.running === true ? '1' : '0';
+              if (row.getAttribute('data-dph-run') !== run) row.setAttribute('data-dph-run', run);
             }
           }
           flush();
