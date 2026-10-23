@@ -2851,8 +2851,27 @@ button[class*="_newSession"]:hover svg {
           try { document.documentElement.setAttribute('data-dph-hero', 'miss'); } catch (e) { /* ignore */ }
         }
       }, 1200);
+      // React to the mount immediately instead of waiting for the next tick:
+      // opening a new session should decorate in the same frame.
+      let observer = null;
       try {
-        if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
+        if (typeof MutationObserver === 'function' && document.body) {
+          let queued = false;
+          observer = new MutationObserver(() => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => { queued = false; if (paint()) misses = 0; });
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+      } catch (e) { /* no observer */ }
+      try {
+        if (typeof ctx.effect === 'function') {
+          ctx.effect(() => () => {
+            clearInterval(timer);
+            if (observer) observer.disconnect();
+          });
+        }
       } catch (e) { /* keep the timer */ }
     }
 
