@@ -2835,14 +2835,21 @@ button[class*="_newSession"]:hover svg {
         try { document.documentElement.setAttribute('data-dph-hero', 'ok'); } catch (e2) { /* ignore */ }
         return true;
       };
-      if (paint()) return;
+      if (paint()) {
+        try { document.documentElement.setAttribute('data-dph-hero', 'ok'); } catch (e) { /* ignore */ }
+      }
+      // Watch for the rest of the runtime: the hero mounts whenever the user
+      // opens a new session, not only during the first minute after boot, and
+      // it unmounts again when a session starts. paint() is a no-op while the
+      // decoration is present, so this is one querySelector per tick.
+      let misses = 0;
       const timer = setInterval(() => {
-        if (paint()) { clearInterval(timer); return; }
-        if (ticks > 40) {
-          clearInterval(timer);
-          try { document.documentElement.setAttribute('data-dph-hero', 'miss'); } catch (e2) { /* ignore */ }
+        if (paint()) { misses = 0; return; }
+        misses += 1;
+        if (misses === 40) {
+          try { document.documentElement.setAttribute('data-dph-hero', 'miss'); } catch (e) { /* ignore */ }
         }
-      }, 1500);
+      }, 1200);
       try {
         if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
       } catch (e) { /* keep the timer */ }
