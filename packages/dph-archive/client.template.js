@@ -1794,6 +1794,48 @@ html[data-dph-skin="dark"] body::after {
     repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.045) 0 1px, transparent 1px 32px);
 }
 
+/* 9b. ambient light: one soft highlight drifts across the sheet, so the paper
+   is never a dead flat fill. 28s, alternate, composited - no layout work. */
+html[data-dph-skin]::after {
+  content: "";
+  position: fixed;
+  inset: -22%;
+  z-index: 2147482999;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 34% at 32% 26%, rgba(255, 255, 255, 0.5), transparent 68%),
+    radial-gradient(30% 26% at 72% 78%, rgba(255, 255, 255, 0.28), transparent 70%);
+  mix-blend-mode: soft-light;
+  will-change: transform, opacity;
+  animation: dph-ambient 28s ease-in-out infinite alternate;
+}
+html[data-dph-skin="dark"]::after {
+  background:
+    radial-gradient(42% 34% at 32% 26%, rgba(255, 186, 120, 0.14), transparent 68%),
+    radial-gradient(30% 26% at 72% 78%, rgba(120, 160, 255, 0.1), transparent 70%);
+  mix-blend-mode: screen;
+}
+@keyframes dph-ambient {
+  0% {
+    transform: translate3d(-5%, -3%, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(5%, 4%, 0) scale(1.1);
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-dph-skin]::after {
+    animation: none;
+    opacity: 0.6;
+    transform: none;
+  }
+}
+
 /* 10. the sheet edge: a hairline plus a measuring ruler along the top */
 html[data-dph-skin] body::before {
   content: "";
