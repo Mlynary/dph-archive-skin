@@ -2780,53 +2780,54 @@ button[class*="_newSession"]:hover svg {
         '<path d="M116 50v-5M132 50v-9M148 50v-5M164 50v-9M180 50v-5M196 50v-9M212 50v-5M228 50v-9M244 50v-5M260 50v-9M276 50v-5M292 50v-9M308 50v-5M324 50v-9M340 50v-5M356 50v-9M372 50v-5M388 50v-9M404 50v-5M420 50v-9M436 50v-5" stroke="currentColor" stroke-width=".8" opacity=".4"/>' +
         '<path d="M116 30h26l14-9 16 16 14-7 18 5 16-11 14 14 18-6 16 9 14-12 18 8 16-5 14 11 18-9 16 6 14-8 18 10 16-6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>' +
         '</svg>';
-      let ticks = 0;
-      // The blank-session hero is found three ways, in order of confidence:
-      //   1. the whale mark's slot, then the largest text in its block
-      //   2. the largest text anywhere outside the chrome
-      //   3. the whale mark's block itself (band appended below it)
-      const largestText = (root) => {
-        const all = root.querySelectorAll('h1, h2, h3, div, span, p');
-        let best = null;
-        let bestSize = 0;
-        for (let i = 0; i < all.length; i += 1) {
-          const el = all[i];
-          if (el.children.length > 0) continue;
-          if (el.closest('.dpa-hero-sub, .dpa-hero-band')) continue;
-          const t = (el.textContent || '').trim();
-          if (t.length < 2 || t.length > 24) continue;
-          const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
-          if (fs > bestSize) { bestSize = fs; best = el; }
-        }
-        return bestSize >= 20 ? best : null;
-      };
-      const findHero = () => {
+      // The hero is located structurally from the brand-mark slot, never by
+      // scanning for large text: this document also hosts floating widgets
+      // (a balance balloon renders 100px numbers) and a text scan lands there.
+      //
+      //   <div class="...headline">
+      //     <span class="...fishHitbox"><div data-slot="conversation.hero.brand.mark"/></span>
+      //     <span class="...titleGroup"><span>探索未至之境</span>…</span>
+      //   </div>
+      //
+      // The decoration goes after that headline block, and the display scale
+      // is applied to the title span only.
+      const inHero = (node) => {
         const anchor = document.querySelector('[data-slot="conversation.hero.brand.mark"]');
-        if (anchor) {
-          let scope = anchor.parentElement;
-          for (let d = 0; d < 5 && scope; d += 1) {
-            if (scope.closest('aside, nav, [class*="sidebar"]')) break;
-            const hit = largestText(scope);
-            if (hit) return hit;
-            scope = scope.parentElement;
-          }
-          return anchor.parentElement || anchor;
+        if (!anchor || !node) return false;
+        let scope = anchor.parentElement;
+        for (let d = 0; d < 3 && scope; d += 1) {
+          if (scope.contains(node)) return true;
+          scope = scope.parentElement;
         }
-        const global = largestText(document.body);
-        if (global && global.closest('aside, nav, [class*="sidebar"], [role="dialog"], [role="menu"]')) return null;
-        return global;
+        return false;
       };
       const paint = () => {
-        ticks += 1;
-        if (document.querySelector('.dpa-hero-sub')) return true;
-        const el = findHero();
-        if (!el) return false;
-        el.setAttribute('data-dph-display', '1');
+        const existing = document.querySelector('.dpa-hero-sub');
+        if (existing) {
+          if (inHero(existing)) return true;
+          // a previous run placed it outside the hero: drop and redo
+          const stray = document.querySelector('.dpa-hero-band');
+          if (stray && !inHero(stray)) stray.remove();
+          existing.remove();
+        }
+        const anchor = document.querySelector('[data-slot="conversation.hero.brand.mark"]');
+        if (!anchor) return false;
+        const headline = anchor.parentElement && anchor.parentElement.parentElement;
+        if (!headline || !headline.parentElement) return false;
+        const title = (() => {
+          const spans = headline.querySelectorAll('span');
+          for (let i = 0; i < spans.length; i += 1) {
+            const s = spans[i];
+            if (s.children.length === 0 && (s.textContent || '').trim().length > 1) return s;
+          }
+          return null;
+        })();
+        if (title) title.setAttribute('data-dph-display', '1');
         const sub = document.createElement('div');
         sub.className = 'dpa-hero-sub';
         sub.setAttribute('aria-hidden', 'true');
         sub.textContent = 'DPH ARCHIVE OS / REV 03';
-        el.insertAdjacentElement('afterend', sub);
+        headline.insertAdjacentElement('afterend', sub);
         const band = document.createElement('div');
         band.className = 'dpa-hero-band';
         band.setAttribute('aria-hidden', 'true');
