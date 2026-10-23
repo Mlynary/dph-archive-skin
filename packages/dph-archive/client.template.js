@@ -2820,6 +2820,14 @@ input, select, textarea {
               return ctx.slots.register(options, component);
             } catch (err) {
               console.warn('[dph-archive] ' + name + ' registration failed:', err);
+              // leave a trace in the DOM so a dump can show what broke
+              try {
+                const note = document.createElement('div');
+                note.setAttribute('data-dph-error', name);
+                note.style.display = 'none';
+                note.textContent = String((err && err.message) || err);
+                document.body.appendChild(note);
+              } catch (e2) { /* ignore */ }
               return () => {};
             }
           });
@@ -2836,11 +2844,12 @@ input, select, textarea {
         // ---- 4. archive panel: sidebar entry + its main page --------
         // Same id on both sides: the sidebar cell dispatches the main key.
         slot('sidebar.panellist', {
+          name: 'sidebar.panellist',
           id: 'dph-archive',
           order: 20,
           label: () => (/^zh/i.test(localeId(ctx)) ? '档案系统' : 'Archive'),
         }, Icon);
-        slot('main', { key: 'dph-archive' }, createPanel(ctx));
+        slot('main', { name: 'main', key: 'dph-archive' }, createPanel(ctx));
 
         // ---- 5. composer framing ------------------------------------
         slot('conversation.input.dock', {
