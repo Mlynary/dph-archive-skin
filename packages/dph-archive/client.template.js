@@ -2596,6 +2596,44 @@ button[class*="_newSession"]:hover svg {
     }
 
     // Manual diagnostic trigger: Ctrl+Alt+D writes the current DOM to a file.
+    // Right-click on a Session row opens that row's own "..." menu, so the
+    // shipped actions (rename, fork, archive, delete) are one gesture away.
+    // The menu is the shell's: this only forwards the gesture to its trigger.
+    function bindRowContextMenu() {
+      if (typeof document === 'undefined') return;
+      const TRIGGERS = [
+        'button[aria-haspopup="menu"]',
+        'button[aria-haspopup="true"]',
+        'button[aria-label*="更多"]',
+        'button[aria-label*="More"]',
+        'button[aria-label*="more"]',
+        'button[title*="更多"]',
+        'button[title*="More"]',
+      ];
+      const openRowMenu = (row) => {
+        for (let i = 0; i < TRIGGERS.length; i += 1) {
+          const btn = row.querySelector(TRIGGERS[i]);
+          if (btn) { btn.click(); return true; }
+        }
+        const btns = row.querySelectorAll('button');
+        if (btns.length) { btns[btns.length - 1].click(); return true; }
+        return false;
+      };
+      try {
+        document.addEventListener('contextmenu', (e) => {
+          const t = e.target;
+          if (!t || !t.closest) return;
+          const row = t.closest('[role="treeitem"]');
+          if (!row) return;
+          if (row.closest('[role="menu"]')) return;
+          if (openRowMenu(row)) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
+      } catch (e) { /* no document */ }
+    }
+
     function bindDumpShortcut() {
       if (typeof document === 'undefined' || typeof window === 'undefined') return;
       try {
@@ -3043,6 +3081,7 @@ input, select, textarea {
 
         // ---- 7. manual DOM dump shortcut (Ctrl+Alt+D) ---------------
         bindDumpShortcut();
+        bindRowContextMenu();
 
         // ---- 8. typographic details --------------------------------
         decorateSettings(ctx);
