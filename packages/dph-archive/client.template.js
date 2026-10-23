@@ -332,6 +332,9 @@ window.__ModuleLoader__.load({
 .dpa-listhead, .dpa-listrow { display: grid; grid-template-columns: 34px 58px minmax(0, 1fr) 74px 56px; gap: 10px; align-items: center; }
 .dpa-listhead { padding: 7px 10px; font-size: var(--dph-fs-micro); letter-spacing: var(--dph-ls-micro); text-transform: uppercase; font-weight: 700; background: var(--dph-bg-invert); color: var(--dph-fg-invert); border-bottom: 0; }
 .dpa-listhead span { color: var(--dph-fg-invert); }
+.dpa-livebar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-family: var(--dph-font-mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dph-fg-secondary); }
+.dpa-livecount { font-family: inherit; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--dph-fg-primary); }
+.dpa-livedot { display: block; width: 5px; height: 5px; margin-left: 10px; background: var(--dph-accent-text); }
 .dpa-listrow { position: relative; padding: 11px 8px; border-bottom: 1px solid var(--dph-rule); font-size: var(--dph-fs-sm); }
 .dpa-listrow:hover { background: var(--dph-bg-raised); }
 .dpa-listrow:hover::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--dph-accent-text); }
