@@ -1977,6 +1977,22 @@ button[class*="_newSession"]:hover svg {
   opacity: 0.7;
   text-align: center;
 }
+/* the blank-session headline is a display plate, not a greeting */
+[data-dph-display] {
+  font-size: clamp(42px, 4.8vw, 64px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.035em !important;
+  font-weight: 700 !important;
+}
+.dpa-hero-band {
+  width: min(460px, 100%);
+  height: 62px;
+  margin: 20px auto 0;
+  color: var(--dsw-alias-label-primary);
+  opacity: 0.72;
+  pointer-events: none;
+}
+.dpa-hero-band svg { display: block; width: 100%; height: 100%; }
 
 /* 24. composer card: hairline frame + corner ticks + measuring rule */
 [data-composer-card] {
@@ -2469,6 +2485,16 @@ button[class*="_newSession"]:hover svg {
     // Only inserts, never removes, so it cannot clip the headline or the mark.
     function decorateHero(ctx) {
       if (typeof document === 'undefined') return;
+      const HERO_BAND =
+        '<svg viewBox="0 0 460 64" fill="none" aria-hidden="true">' +
+        '<circle cx="52" cy="32" r="9" stroke="currentColor" stroke-width="1.1" opacity=".7"/>' +
+        '<circle cx="52" cy="32" r="17" stroke="currentColor" stroke-width=".8" opacity=".45"/>' +
+        '<circle cx="52" cy="32" r="25" stroke="currentColor" stroke-width=".8" opacity=".3"/>' +
+        '<path d="M52 18V46M38 32H66" stroke="currentColor" stroke-width=".8" opacity=".45"/>' +
+        '<path d="M0 50H460" stroke="currentColor" stroke-width=".8" opacity=".3"/>' +
+        '<path d="M116 50v-5M132 50v-9M148 50v-5M164 50v-9M180 50v-5M196 50v-9M212 50v-5M228 50v-9M244 50v-5M260 50v-9M276 50v-5M292 50v-9M308 50v-5M324 50v-9M340 50v-5M356 50v-9M372 50v-5M388 50v-9M404 50v-5M420 50v-9M436 50v-5" stroke="currentColor" stroke-width=".8" opacity=".4"/>' +
+        '<path d="M116 30h26l14-9 16 16 14-7 18 5 16-11 14 14 18-6 16 9 14-12 18 8 16-5 14 11 18-9 16 6 14-8 18 10 16-6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>' +
+        '</svg>';
       let ticks = 0;
       const paint = () => {
         ticks += 1;
@@ -2479,11 +2505,17 @@ button[class*="_newSession"]:hover svg {
           const text = (el.textContent || '').trim();
           if (text !== '探索未至之境' && text !== 'Explore the unknown') continue;
           if (el.closest('aside, nav, [class*="sidebar"]')) continue;
+          el.setAttribute('data-dph-display', '1');
           const sub = document.createElement('div');
           sub.className = 'dpa-hero-sub';
           sub.setAttribute('aria-hidden', 'true');
           sub.textContent = 'DPH ARCHIVE OS / REV 03';
           el.insertAdjacentElement('afterend', sub);
+          const band = document.createElement('div');
+          band.className = 'dpa-hero-band';
+          band.setAttribute('aria-hidden', 'true');
+          band.innerHTML = HERO_BAND;
+          sub.insertAdjacentElement('afterend', band);
           return true;
         }
         return false;
