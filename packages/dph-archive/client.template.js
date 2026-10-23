@@ -289,24 +289,30 @@ window.__ModuleLoader__.load({
 .dpa-sheethead { position: relative; padding-right: 224px; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--dph-rule-strong); }
 .dpa-eyebrow { display: flex; align-items: center; gap: 8px; font-size: var(--dph-fs-micro); font-weight: 700; letter-spacing: var(--dph-ls-micro); text-transform: uppercase; color: var(--dph-fg-secondary); }
 .dpa-eyebrow i { width: 6px; height: 6px; background: var(--dph-accent-text); display: block; flex: none; }
-.dpa-h1 { margin: 10px 0 0; font-size: 52px; font-weight: var(--dph-fw-heavy); line-height: 0.98; letter-spacing: -0.045em; text-transform: uppercase; }
+.dpa-h1 { margin: 10px 0 0; font-size: 72px; font-weight: var(--dph-fw-heavy); line-height: 0.94; letter-spacing: -0.05em; text-transform: uppercase; }
 .dpa-h1 small { display: block; margin-top: 6px; font-size: var(--dph-fs-sm); font-weight: 500; letter-spacing: 0.14em; color: var(--dph-fg-muted); text-transform: uppercase; }
 .dpa-lede { margin: 14px 0 0; max-width: 46ch; font-size: var(--dph-fs-sm); line-height: var(--dph-lh-loose); color: var(--dph-fg-secondary); }
 .dpa-ghost { position: absolute; right: -4px; top: -18px; font-size: var(--dph-fs-ghost); font-weight: var(--dph-fw-heavy); letter-spacing: -0.06em; line-height: 1; color: var(--dph-fg-primary); opacity: 0.055; pointer-events: none; user-select: none; }
 
 /* the section plate: a poster-scale black block, not a chip */
 .dpa-plate {
-  position: absolute; right: -6px; top: -10px;
-  width: 200px; height: 128px;
+  position: absolute; right: -14px; top: -14px;
+  width: 236px; height: 150px;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
-  padding: 14px 16px 12px 20px;
+  padding: 16px 18px 12px 22px;
   background: var(--dph-bg-invert); color: var(--dph-fg-invert);
-  transform: rotate(-2.2deg);
+  transform: rotate(-3.2deg);
   z-index: 2;
 }
 .dpa-plate::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--dph-accent-invert); }
-.dpa-plate b { font-size: 68px; font-weight: var(--dph-fw-heavy); line-height: 0.82; letter-spacing: -0.06em; }
+.dpa-plate b { font-size: 84px; font-weight: var(--dph-fw-heavy); line-height: 0.8; letter-spacing: -0.07em; }
 .dpa-plate span { font-family: var(--dph-font-mono); font-size: 8.5px; letter-spacing: 0.28em; opacity: 0.68; text-transform: uppercase; }
+
+/* the specimen band: a duotone instrument plate, the "image" layer */
+.dpa-band { position: relative; flex: 0 0 auto; height: 106px; min-height: 106px; margin: 0 0 22px; border: 1px solid var(--dph-rule-strong); overflow: hidden; background: var(--dph-bg-raised); }
+.dpa-bandart { position: absolute; inset: 0; display: block; width: 100%; height: 100%; color: var(--dph-fg-primary); }
+.dpa-band::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 64px; background: var(--dph-bg-invert); }
+.dpa-bandcap { position: absolute; left: 136px; bottom: 7px; right: 76px; display: flex; justify-content: space-between; font-family: var(--dph-font-mono); font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dph-fg-secondary); }
 
 .dpa-noteswrap { margin-top: auto; padding-top: 30px; }
 .dpa-notes {
@@ -973,6 +979,41 @@ window.__ModuleLoader__.load({
         span('dpa-filtercount', countLabel));
     }
 
+    // A duotone instrument plate: the "photographic" layer, drawn instead of
+    // borrowed. Concentric rings, a measuring baseline, ticks and a trace.
+    function SpecimenBand() {
+      const arcs = [16, 26, 36, 46, 56].map((r, i) =>
+        h('circle', {
+          key: 'c' + i, cx: 96, cy: 52, r, fill: 'none', stroke: 'currentColor',
+          strokeWidth: i === 0 ? 1.4 : 0.8, opacity: i === 0 ? 0.7 : 0.38,
+        }));
+      const ticks = [];
+      for (let i = 0; i <= 34; i += 1) {
+        const x = 176 + i * 17;
+        const tall = i % 4 === 0;
+        ticks.push(h('path', {
+          key: 't' + i, d: 'M' + x + ' 78V' + (tall ? 64 : 72),
+          stroke: 'currentColor', strokeWidth: 0.8, opacity: tall ? 0.62 : 0.34,
+        }));
+      }
+      let wave = 'M176 52';
+      for (let i = 0; i < 17; i += 1) {
+        wave += ' L' + (176 + (i + 1) * 32) + ' ' + (52 - Math.sin(i * 1.15) * (5 + (i % 3) * 5));
+      }
+      return div('dpa-band',
+        h('svg', {
+          viewBox: '0 0 800 104', preserveAspectRatio: 'xMidYMid slice',
+          className: 'dpa-bandart', 'aria-hidden': true,
+        },
+          h('path', { d: 'M0 78H800', stroke: 'currentColor', strokeWidth: 0.8, opacity: 0.3 }),
+          ...arcs,
+          h('path', { d: 'M96 28V76M72 52H120', stroke: 'currentColor', strokeWidth: 0.7, opacity: 0.4 }),
+          ...ticks,
+          h('path', { d: wave, fill: 'none', stroke: 'currentColor', strokeWidth: 1.2, opacity: 0.68 })
+        ),
+        div('dpa-bandcap', span(null, 'PLATE 08 / INSTRUMENT'), span(null, 'SCALE 1:1')));
+    }
+
     function IndexSection({ loc, copy, ui }) {
       const rows = ARCHIVE.length ? ARCHIVE : FALLBACK_ARCHIVE;
       const filter = (ui && ui.filter) || 'ALL';
@@ -1433,6 +1474,7 @@ window.__ModuleLoader__.load({
           active.id === 'index' ? divx({ className: 'dpa-figures', key: 'fig-' + active.id },
             ...figures.map(([label, value]) => divx({ className: 'dpa-fig', key: label },
               span('k', label), span('v', value)))) : null,
+          active.id === 'index' ? h(SpecimenBand, { key: 'band-' + active.id }) : null,
           divx({ className: 'dpa-stage', key: 'stage-' + active.id },
             h(Body, { loc: loc, copy: copy, ui: ui })),
           div('dpa-noteswrap', notes));
