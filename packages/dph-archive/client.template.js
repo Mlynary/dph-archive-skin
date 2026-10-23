@@ -2781,23 +2781,40 @@ button[class*="_newSession"]:hover svg {
         '<path d="M116 30h26l14-9 16 16 14-7 18 5 16-11 14 14 18-6 16 9 14-12 18 8 16-5 14 11 18-9 16 6 14-8 18 10 16-6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>' +
         '</svg>';
       let ticks = 0;
-      // Find the hero headline by size, not by copy: the blank session always
-      // types one line far larger than anything else outside the chrome.
-      const findHero = () => {
-        const all = document.querySelectorAll('h1, h2, h3, p, span, div');
+      // The blank-session hero is found three ways, in order of confidence:
+      //   1. the whale mark's slot, then the largest text in its block
+      //   2. the largest text anywhere outside the chrome
+      //   3. the whale mark's block itself (band appended below it)
+      const largestText = (root) => {
+        const all = root.querySelectorAll('h1, h2, h3, div, span, p');
         let best = null;
         let bestSize = 0;
         for (let i = 0; i < all.length; i += 1) {
           const el = all[i];
           if (el.children.length > 0) continue;
+          if (el.closest('.dpa-hero-sub, .dpa-hero-band')) continue;
           const t = (el.textContent || '').trim();
           if (t.length < 2 || t.length > 24) continue;
-          if (el.closest('aside, nav, [class*="sidebar"], [role="dialog"], [role="menu"], [role="tooltip"], button, [data-slot*="sidebar"]')) continue;
-          if (el.hasAttribute('data-dph-display')) return el;
           const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
           if (fs > bestSize) { bestSize = fs; best = el; }
         }
-        return bestSize >= 24 ? best : null;
+        return bestSize >= 20 ? best : null;
+      };
+      const findHero = () => {
+        const anchor = document.querySelector('[data-slot="conversation.hero.brand.mark"]');
+        if (anchor) {
+          let scope = anchor.parentElement;
+          for (let d = 0; d < 5 && scope; d += 1) {
+            if (scope.closest('aside, nav, [class*="sidebar"]')) break;
+            const hit = largestText(scope);
+            if (hit) return hit;
+            scope = scope.parentElement;
+          }
+          return anchor.parentElement || anchor;
+        }
+        const global = largestText(document.body);
+        if (global && global.closest('aside, nav, [class*="sidebar"], [role="dialog"], [role="menu"]')) return null;
+        return global;
       };
       const paint = () => {
         ticks += 1;
