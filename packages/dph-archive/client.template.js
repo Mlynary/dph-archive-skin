@@ -2174,6 +2174,11 @@ button[class*="_newSession"]:hover svg {
   letter-spacing: -0.035em !important;
   font-weight: 700 !important;
 }
+/* the whale scales with the display title; the sidebar mark stays 24px */
+[data-slot="conversation.hero.brand.mark"] svg {
+  width: 58px !important;
+  height: 43px !important;
+}
 .dpa-hero-band {
   width: min(460px, 100%);
   height: 62px;
