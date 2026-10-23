@@ -1014,7 +1014,42 @@ window.__ModuleLoader__.load({
         div('dpa-bandcap', span(null, 'PLATE 08 / INSTRUMENT'), span(null, 'SCALE 1:1')));
     }
 
+    // Live index: the real session catalog, one row per session.
+    function LiveIndex({ loc, copy, ui }) {
+      const rows = ui.live;
+      const running = rows.filter((r) => r.running).length;
+      const bar = div('dpa-livebar',
+        span('dpa-livecount', String(rows.length).padStart(2, '0')),
+        span(null, loc === 'zh' ? '个会话' : 'SESSIONS'),
+        span('dpa-livedot'),
+        span(null, String(running).padStart(2, '0')),
+        span(null, loc === 'zh' ? '在线' : 'RUNNING'));
+      const head = div('dpa-listhead',
+        span(null, 'NO.'),
+        span(null, 'CODE'),
+        span(null, loc === 'zh' ? '会话' : 'SESSION'),
+        h('span', { style: { textAlign: 'right' } }, 'WORKSPACE'),
+        h('span', { style: { textAlign: 'right' } }, 'STATE'));
+      const body = rows.map((r) => h('button', {
+        key: r.id,
+        type: 'button',
+        className: 'dpa-listrow dpa-rowbtn',
+        title: r.id,
+        onClick: () => { if (ui.openSession) ui.openSession(r.id); },
+      },
+        span('dpa-num', r.no),
+        span('dpa-num', r.code),
+        div('dpa-title', h('b', null, r.title)),
+        span('dpa-meta', r.workspace),
+        div('dpa-stcell',
+          Ticks({ on: r.running ? 4 : 3, total: 4 }),
+          h('span', { className: 'dpa-state', 'data-s': r.running ? 'LIVE' : 'DONE' },
+            r.running ? (loc === 'zh' ? '在线' : 'LIVE') : (loc === 'zh' ? '空闲' : 'IDLE')))));
+      return div(null, bar, div(null, div('dpa-list', head, ...body)));
+    }
+
     function IndexSection({ loc, copy, ui }) {
+      if (ui && Array.isArray(ui.live) && ui.live.length) return LiveIndex({ loc: loc, copy: copy, ui: ui });
       const rows = ARCHIVE.length ? ARCHIVE : FALLBACK_ARCHIVE;
       const filter = (ui && ui.filter) || 'ALL';
       const selected = ui && ui.selected;
@@ -1292,6 +1327,37 @@ window.__ModuleLoader__.load({
         }
       };
 
+      // Live session catalog: real rows from the Client session and workspace
+      // snapshots. Returns null when the services are absent so the panel can
+      // fall back to the static style-study index.
+      const readLiveSessions = () => {
+        try {
+          const s = ctx.sessions && ctx.sessions.list && ctx.sessions.list.getSnapshot();
+          if (!s || !Array.isArray(s.ids) || !s.ids.length) return null;
+          const w = ctx.workspaces && ctx.workspaces.list && ctx.workspaces.list.getSnapshot();
+          const wsName = new Map();
+          if (w && Array.isArray(w.items)) {
+            w.items.forEach((item) => {
+              (item.sessionIds || []).forEach((sid) => wsName.set(sid, item.title));
+            });
+          }
+          return s.ids.map((id, i) => {
+            const row = (s.byId && s.byId[id]) || {};
+            const no = String(i + 1).padStart(2, '0');
+            return {
+              id: id,
+              no: no,
+              code: 'S-' + no,
+              title: row.title || '(untitled)',
+              workspace: wsName.get(id) || 'UNGROUPED',
+              running: row.running === true,
+            };
+          });
+        } catch (e) {
+          return null;
+        }
+      };
+
       return function Panel() {
         const [section, setSection] = useState('index');
         const [mode, setMode] = useState(readMode);
@@ -1301,6 +1367,14 @@ window.__ModuleLoader__.load({
         const [toolGroup, setToolGroup] = useState('ALL');
         const [selected, setSelected] = useState('');
         const [booting, setBooting] = useState(() => !reducedMotion() && !bootedThisSession());
+        const [live, setLive] = useState(readLiveSessions);
+
+        // The session catalog is a live snapshot, not a one-shot read: a new
+        // turn or a rename should show up without reopening the panel.
+        useEffect(() => {
+          const id = setInterval(() => setLive(readLiveSessions()), 2000);
+          return () => clearInterval(id);
+        }, []);
 
         useEffect(() => {
           let off = null;
@@ -1339,6 +1413,12 @@ window.__ModuleLoader__.load({
           setToolGroup: setToolGroup,
           selected: selected,
           setSelected: setSelected,
+          live: live,
+          openSession: (id) => {
+            try {
+              if (ctx.uiWorkspace && ctx.uiWorkspace.openSession) ctx.uiWorkspace.openSession(id);
+            } catch (e) { /* no workspace service */ }
+          },
         };
         const figures = [
           [copy.counters.entries, String(rowsAll.length).padStart(2, '0')],
@@ -2787,7 +2867,7 @@ input, select, textarea {
     }
 
     return {
-      inject: ['slots', 'locale', 'theme'],
+      inject: ['slots', 'locale', 'theme', 'sessions', 'workspaces', 'uiWorkspace'],
       apply(ctx) {
         currentCtx = ctx;
 
