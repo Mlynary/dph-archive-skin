@@ -2496,29 +2496,41 @@ button[class*="_newSession"]:hover svg {
         '<path d="M116 30h26l14-9 16 16 14-7 18 5 16-11 14 14 18-6 16 9 14-12 18 8 16-5 14 11 18-9 16 6 14-8 18 10 16-6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>' +
         '</svg>';
       let ticks = 0;
+      // Find the hero headline by size, not by copy: the blank session always
+      // types one line far larger than anything else outside the chrome.
+      const findHero = () => {
+        const all = document.querySelectorAll('h1, h2, h3, p, span, div');
+        let best = null;
+        let bestSize = 0;
+        for (let i = 0; i < all.length; i += 1) {
+          const el = all[i];
+          if (el.children.length > 0) continue;
+          const t = (el.textContent || '').trim();
+          if (t.length < 2 || t.length > 24) continue;
+          if (el.closest('aside, nav, [class*="sidebar"], [role="dialog"], [role="menu"], [role="tooltip"], button, [data-slot*="sidebar"]')) continue;
+          if (el.hasAttribute('data-dph-display')) return el;
+          const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
+          if (fs > bestSize) { bestSize = fs; best = el; }
+        }
+        return bestSize >= 24 ? best : null;
+      };
       const paint = () => {
         ticks += 1;
         if (document.querySelector('.dpa-hero-sub')) return true;
-        const nodes = document.querySelectorAll('h1, h2');
-        for (let i = 0; i < nodes.length; i += 1) {
-          const el = nodes[i];
-          const text = (el.textContent || '').trim();
-          if (text !== '探索未至之境' && text !== 'Explore the unknown') continue;
-          if (el.closest('aside, nav, [class*="sidebar"]')) continue;
-          el.setAttribute('data-dph-display', '1');
-          const sub = document.createElement('div');
-          sub.className = 'dpa-hero-sub';
-          sub.setAttribute('aria-hidden', 'true');
-          sub.textContent = 'DPH ARCHIVE OS / REV 03';
-          el.insertAdjacentElement('afterend', sub);
-          const band = document.createElement('div');
-          band.className = 'dpa-hero-band';
-          band.setAttribute('aria-hidden', 'true');
-          band.innerHTML = HERO_BAND;
-          sub.insertAdjacentElement('afterend', band);
-          return true;
-        }
-        return false;
+        const el = findHero();
+        if (!el) return false;
+        el.setAttribute('data-dph-display', '1');
+        const sub = document.createElement('div');
+        sub.className = 'dpa-hero-sub';
+        sub.setAttribute('aria-hidden', 'true');
+        sub.textContent = 'DPH ARCHIVE OS / REV 03';
+        el.insertAdjacentElement('afterend', sub);
+        const band = document.createElement('div');
+        band.className = 'dpa-hero-band';
+        band.setAttribute('aria-hidden', 'true');
+        band.innerHTML = HERO_BAND;
+        sub.insertAdjacentElement('afterend', band);
+        return true;
       };
       if (paint()) return;
       const timer = setInterval(() => {
