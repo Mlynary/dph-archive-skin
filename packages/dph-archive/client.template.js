@@ -1794,8 +1794,7 @@ html[data-dph-skin="dark"] body::after {
     repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.045) 0 1px, transparent 1px 32px);
 }
 
-/* 10. a hairline at the very edge of the sheet (no marks near the corners,
-      where the shell keeps its own buttons) */
+/* 10. the sheet edge: a hairline plus a measuring ruler along the top */
 html[data-dph-skin] body::before {
   content: "";
   position: fixed;
@@ -1803,6 +1802,21 @@ html[data-dph-skin] body::before {
   z-index: 2147483000;
   pointer-events: none;
   box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(11, 15, 13, 0.22) 0 1px,
+    transparent 1px 16px
+  );
+  background-size: 100% 4px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+}
+html[data-dph-skin="dark"] body::before {
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(233, 229, 223, 0.2) 0 1px,
+    transparent 1px 16px
+  );
 }
 
 /* 11. every icon is redrawn on the same hairline grid */
@@ -2286,18 +2300,37 @@ button[class*="_newSession"]:hover svg {
   opacity: 0.55;
 }
 
-/* 20. conversation: a turn band, like a ruled line on a file card */
+/* 20. conversation: a turn divider, like a file card's ruled band */
+[data-dph-turn] {
+  position: relative;
+  margin-top: 30px !important;
+}
 [data-dph-turn]::before {
   content: "T-" attr(data-dph-turn);
-  display: block;
-  padding: 12px 0 6px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
+  position: absolute;
+  top: -18px;
+  left: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  height: 15px;
+  padding: 0 6px;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-base);
   font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
   font-size: 8px;
-  letter-spacing: 0.24em;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--dsw-alias-label-secondary);
-  opacity: 0.7;
+}
+[data-dph-turn]::after {
+  content: "";
+  position: absolute;
+  top: -11px;
+  left: 52px;
+  right: 0;
+  height: 1px;
+  background: var(--dsw-alias-border-l1);
 }
 
 /* 21. status corner: page serial, bottom right, never intercepts clicks */
