@@ -17,7 +17,7 @@ window.__ModuleLoader__.load({
     const BRAND = /*__BRAND__*/{};
     const SKIN = /*__SKIN__*/{};
 
-    const BUILD = '2026-10-22';
+    const BUILD = '2026-10-23';
     // Use the plugin's own whale mark instead of the shell's DeepSeek glyph.
     const USE_CUSTOM_MARK = false;
     let currentCtx = null;
