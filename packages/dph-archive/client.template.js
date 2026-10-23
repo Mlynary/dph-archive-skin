@@ -2341,6 +2341,17 @@ button[class*="_newSession"]:hover svg {
 }
 [data-row-key^="session:"][data-dph-run="1"]::after {
   background: #FF7500;
+  animation: dph-lamp 2.4s ease-in-out infinite;
+}
+@keyframes dph-lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-row-key^="session:"][data-dph-run="1"]::after {
+    animation: none;
+    opacity: 1;
+  }
 }
 [data-row-key^="session:"][aria-selected="true"]::before { opacity: 0.75; }
 /* workspace rows keep the app face: mono tracking on Chinese reads as noise */
