@@ -2305,6 +2305,57 @@ button[class*="_newSession"]:hover svg {
   opacity: 0.55;
 }
 
+/* 29. sidebars: the archive index language, applied to the real columns.
+   Session rows get a serial in the left gutter, workspace rows become index
+   headers, the right column becomes a filed surface. */
+[role="tree"] { counter-reset: dph-sess; }
+[data-row-key^="session:"] {
+  position: relative !important;
+  padding-left: 30px !important;
+  counter-increment: dph-sess;
+}
+[data-row-key^="session:"]::before {
+  content: counter(dph-sess, decimal-leading-zero);
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.42;
+  pointer-events: none;
+}
+[data-row-key^="session:"][aria-selected="true"]::before { opacity: 0.75; }
+[data-row-key^="workspace:"] {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+[data-rightbar-col] { background: var(--dsw-alias-bg-base) !important; }
+[data-dockkit-surface], [data-dockkit-pane] { background: transparent !important; }
+[data-dockkit-strip] {
+  background: transparent !important;
+  border-bottom: 1px solid var(--dsw-alias-border-l1) !important;
+}
+[data-dockkit-strip] button {
+  border-radius: 2px !important;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase;
+}
+[class*="_paneBody"] { background: transparent !important; }
+[class*="_paneBody"] [class*="_empty"] {
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.2em !important;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
 /* 20. conversation: a turn divider, like a file card's ruled band */
 [data-dph-turn] {
   position: relative;
