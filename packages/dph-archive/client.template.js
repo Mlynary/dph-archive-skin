@@ -20,6 +20,8 @@ window.__ModuleLoader__.load({
     const BUILD = '2026-10-23';
     // Use the plugin's own whale mark instead of the shell's DeepSeek glyph.
     const USE_CUSTOM_MARK = false;
+    // The archive page was retired: its furniture now decorates the app itself.
+    const USE_ARCHIVE_PAGE = false;
     let currentCtx = null;
 
     // ------------------------------------------------------------------
@@ -2426,6 +2428,32 @@ button[class*="_newSession"]:hover svg {
 .dpa-dock > .tag.dim {
   opacity: 0.65;
 }
+/* the archive measuring strip, moved into the composer dock */
+.dpa-dockticks {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+  opacity: 0.55;
+}
+.dpa-dockticks i {
+  display: block;
+  width: 1px;
+  height: 4px;
+  background: currentColor;
+}
+.dpa-dockticks i[data-tall="true"] { height: 9px; }
+.dpa-dockscale {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+}
+.dpa-statusrings {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  opacity: 0.75;
+}
 `;
 
     function skinChrome(ctx) {
@@ -2524,10 +2552,17 @@ button[class*="_newSession"]:hover svg {
     // ------------------------------------------------------------------
     function ComposerDock() {
       const zh = /^zh/i.test(localeId(currentCtx));
+      // The measuring strip from the archive plate, moved into the composer.
+      const ticks = [];
+      for (let i = 0; i < 21; i += 1) {
+        ticks.push(h('i', { key: i, 'data-tall': i % 5 === 0 ? 'true' : 'false' }));
+      }
       return h('div', { className: 'dpa-dock', 'aria-hidden': true },
         h('span', { className: 'chip' }, 'IN'),
         h('span', { className: 'rule' }),
-        h('span', { className: 'tag' }, zh ? '输入 / COMPOSER' : 'COMPOSER / INPUT')
+        h('span', { className: 'tag' }, zh ? '输入 / COMPOSER' : 'COMPOSER / INPUT'),
+        h('span', { className: 'dpa-dockticks' }, ...ticks),
+        h('span', { className: 'dpa-dockscale' }, '0 / 1:1')
       );
     }
 
@@ -2539,6 +2574,11 @@ button[class*="_newSession"]:hover svg {
       }, []);
       const pad = (n) => (n < 10 ? '0' + n : '' + n);
       return h('div', { className: 'dpa-status', 'aria-hidden': true },
+        h('svg', { className: 'dpa-statusrings', viewBox: '0 0 24 24', key: 'rings' },
+          h('circle', { cx: 12, cy: 12, r: 5.2, fill: 'none', stroke: 'currentColor', strokeWidth: 1 }),
+          h('circle', { cx: 12, cy: 12, r: 9.4, fill: 'none', stroke: 'currentColor', strokeWidth: 0.7, opacity: 0.5 }),
+          h('path', { d: 'M12 3.4v3M12 17.6v3M3.4 12h3M17.6 12h3', stroke: 'currentColor', strokeWidth: 0.7, opacity: 0.6 })
+        ),
         h('span', null, 'DPH ARCHIVE OS'),
         h('span', { className: 'sep' }, '/'),
         h('span', null, 'REV 03'),
@@ -3053,15 +3093,20 @@ input, select, textarea {
           slot('conversation.hero.brand.mark', { name: 'conversation.hero.brand.mark' }, BrandMark);
         }
 
-        // ---- 4. archive panel: sidebar entry + its main page --------
-        // Same id on both sides: the sidebar cell dispatches the main key.
-        slot('sidebar.panellist', {
-          name: 'sidebar.panellist',
-          id: 'dph-archive',
-          order: 20,
-          label: () => (/^zh/i.test(localeId(ctx)) ? '档案系统' : 'Archive'),
-        }, Icon);
-        slot('main', { name: 'main', key: 'dph-archive' }, createPanel(ctx));
+        // ---- 4. archive panel (retired) -----------------------------
+        // The panel duplicated the sidebar and cost a context switch, so its
+        // furniture now lives in the working surfaces instead (hero band,
+        // composer ruler, status rings, turn bands). Flip USE_ARCHIVE_PAGE to
+        // bring the page back as an optional overview.
+        if (USE_ARCHIVE_PAGE) {
+          slot('sidebar.panellist', {
+            name: 'sidebar.panellist',
+            id: 'dph-archive',
+            order: 20,
+            label: () => (/^zh/i.test(localeId(ctx)) ? '档案系统' : 'Archive'),
+          }, Icon);
+          slot('main', { name: 'main', key: 'dph-archive' }, createPanel(ctx));
+        }
 
         // ---- 5. composer framing ------------------------------------
         slot('conversation.input.dock', {
