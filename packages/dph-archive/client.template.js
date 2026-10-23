@@ -332,6 +332,9 @@ window.__ModuleLoader__.load({
 .dpa-listhead, .dpa-listrow { display: grid; grid-template-columns: 34px 58px minmax(0, 1fr) 74px 56px; gap: 10px; align-items: center; }
 .dpa-listhead { padding: 7px 10px; font-size: var(--dph-fs-micro); letter-spacing: var(--dph-ls-micro); text-transform: uppercase; font-weight: 700; background: var(--dph-bg-invert); color: var(--dph-fg-invert); border-bottom: 0; }
 .dpa-listhead span { color: var(--dph-fg-invert); }
+.dpa-recordactions { display: flex; gap: 6px; margin: 10px 0 8px; }
+.dpa-btn { flex: 1; border: 1px solid var(--dph-rule-strong); border-radius: var(--dph-r-chip); background: transparent; padding: 5px 6px; font-family: var(--dph-font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--dph-fg-primary); cursor: pointer; }
+.dpa-btn:hover { background: var(--dph-bg-invert); color: var(--dph-fg-invert); border-color: var(--dph-bg-invert); }
 .dpa-livebar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-family: var(--dph-font-mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dph-fg-secondary); }
 .dpa-livecount { font-family: inherit; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--dph-fg-primary); }
 .dpa-livedot { display: block; width: 5px; height: 5px; margin-left: 10px; background: var(--dph-accent-text); }
@@ -1038,7 +1041,8 @@ window.__ModuleLoader__.load({
         type: 'button',
         className: 'dpa-listrow dpa-rowbtn',
         title: r.id,
-        onClick: () => { if (ui.openSession) ui.openSession(r.id); },
+        'data-on': ui.selected === r.id ? 'true' : 'false',
+        onClick: () => { if (ui.setSelected) ui.setSelected(r.id); },
       },
         span('dpa-num', r.no),
         span('dpa-num', r.code),
@@ -1049,6 +1053,45 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dpa-state', 'data-s': r.running ? 'LIVE' : 'DONE' },
             r.running ? (loc === 'zh' ? '在线' : 'LIVE') : (loc === 'zh' ? '空闲' : 'IDLE')))));
       return div(null, bar, div(null, div('dpa-list', head, ...body)));
+    }
+
+    // Live rail card: the selected session, with the two actions that were
+    // missing - open, and archive. Selecting a row never navigates.
+    function LiveRecordCard({ loc, copy, ui }) {
+      const item = ui.liveItem;
+      if (!item) {
+        return divx({ className: 'dpa-record', 'data-idle': 'true' },
+          div('dpa-recordbar', span(null, copy.record), span('dpa-recordno', '--')),
+          div('dpa-recordbody',
+            div('dpa-recordidle', loc === 'zh' ? '在索引中点选一行会话。' : 'Select a session in the index.'),
+            div('dpa-recordfoot', Ticks({ on: 0, total: 4 }), span(null, '000 / 000'))));
+      }
+      const rows = [
+        ['ID', String(item.id).slice(0, 10)],
+        ['WS', item.workspace],
+        ['CWD', item.cwd || '\u2014'],
+        ['ST', item.running ? (loc === 'zh' ? '在线' : 'LIVE') : (loc === 'zh' ? '空闲' : 'IDLE')],
+      ];
+      const kids = [];
+      rows.forEach(([k, v]) => {
+        kids.push(h('dt', { key: 'k:' + k }, k));
+        kids.push(h('dd', { key: 'v:' + k }, v));
+      });
+      return div('dpa-record',
+        div('dpa-recordbar', span(null, copy.record), span('dpa-recordno', item.code)),
+        div('dpa-recordbody',
+          div('dpa-recordtitle', item.title, span(null, item.workspace)),
+          h('dl', { className: 'dpa-reckv' }, ...kids),
+          div('dpa-recordactions',
+            h('button', {
+              key: 'open', type: 'button', className: 'dpa-btn',
+              onClick: () => { if (ui.openSession) ui.openSession(item.id); },
+            }, loc === 'zh' ? '打开会话' : 'OPEN'),
+            h('button', {
+              key: 'arch', type: 'button', className: 'dpa-btn',
+              onClick: () => { if (ui.archiveSession) ui.archiveSession(item.id); },
+            }, loc === 'zh' ? '归档' : 'ARCHIVE')),
+          div('dpa-recordfoot', Ticks({ on: item.running ? 4 : 3, total: 4 }), span(null, item.code))));
     }
 
     function IndexSection({ loc, copy, ui }) {
@@ -1351,8 +1394,9 @@ window.__ModuleLoader__.load({
               id: id,
               no: no,
               code: 'S-' + no,
-              title: row.title || '(untitled)',
-              workspace: wsName.get(id) || 'UNGROUPED',
+              title: row.displayTitle || row.title || row.name || id,
+              workspace: wsName.get(id) || row.workspaceTitle || 'UNGROUPED',
+              cwd: row.cwd || '',
               running: row.running === true,
             };
           });
@@ -1409,6 +1453,7 @@ window.__ModuleLoader__.load({
         const shownTitle = useDecrypt(titlePair.primary, active.id);
         const rowsAll = ARCHIVE.length ? ARCHIVE : FALLBACK_ARCHIVE;
         const current = rowsAll.filter((r) => r.code === selected)[0] || null;
+        const liveItem = (live && live.filter((r) => r.id === selected)[0]) || null;
         const ui = {
           filter: filter,
           setFilter: setFilter,
@@ -1417,9 +1462,20 @@ window.__ModuleLoader__.load({
           selected: selected,
           setSelected: setSelected,
           live: live,
+          liveItem: liveItem,
           openSession: (id) => {
             try {
               if (ctx.uiWorkspace && ctx.uiWorkspace.openSession) ctx.uiWorkspace.openSession(id);
+            } catch (e) { /* no workspace service */ }
+          },
+          archiveSession: (id) => {
+            try {
+              if (ctx.uiWorkspace && ctx.uiWorkspace.archiveSession) {
+                ctx.uiWorkspace.archiveSession(id, { stopActivity: true }).then(() => {
+                  setLive(readLiveSessions());
+                  setSelected('');
+                }).catch(() => {});
+              }
             } catch (e) { /* no workspace service */ }
           },
         };
@@ -1565,7 +1621,7 @@ window.__ModuleLoader__.load({
         const rightRail = h('aside', { className: 'dpa-railright' },
           h(RailIndex, { activeId: active.id, loc: loc }),
           active.id === 'index'
-            ? h(RecordCard, { loc: loc, copy: copy, item: current, total: rowsAll.length })
+            ? (live ? h(LiveRecordCard, { loc: loc, copy: copy, ui: ui }) : h(RecordCard, { loc: loc, copy: copy, item: current, total: rowsAll.length }))
             : h(SheetCard, { active: active, loc: loc, copy: copy, count: counts[active.id] }),
           div('dpa-card',
             div('dpa-cardhead', span(null, copy.profile), h('em', null, '01')),
