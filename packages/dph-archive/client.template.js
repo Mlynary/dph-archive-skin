@@ -2832,11 +2832,16 @@ button[class*="_newSession"]:hover svg {
         band.setAttribute('aria-hidden', 'true');
         band.innerHTML = HERO_BAND;
         sub.insertAdjacentElement('afterend', band);
+        try { document.documentElement.setAttribute('data-dph-hero', 'ok'); } catch (e2) { /* ignore */ }
         return true;
       };
       if (paint()) return;
       const timer = setInterval(() => {
-        if (paint() || ticks > 40) clearInterval(timer);
+        if (paint()) { clearInterval(timer); return; }
+        if (ticks > 40) {
+          clearInterval(timer);
+          try { document.documentElement.setAttribute('data-dph-hero', 'miss'); } catch (e2) { /* ignore */ }
+        }
       }, 1500);
       try {
         if (typeof ctx.effect === 'function') ctx.effect(() => () => clearInterval(timer));
