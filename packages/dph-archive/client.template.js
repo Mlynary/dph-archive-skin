@@ -734,9 +734,31 @@ window.__ModuleLoader__.load({
 .dpa-figure .dpa-specimen { max-width: 420px; }
 
 @container (max-width: 1080px) {
-  .dpa-body { grid-template-columns: var(--dph-layout-rail-left, 216px) minmax(0, 1fr); }
-  .dpa-railright { display: none; }
+  .dpa-body { grid-template-columns: var(--dph-layout-rail-left, 216px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  /* the rail becomes a horizontal strip under the sheet instead of vanishing:
+     selection feedback and its actions must survive any width */
+  .dpa-railright {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+    border-left: 0;
+    border-top: 1px solid var(--dph-rule);
+    padding: 12px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .dpa-railright::before { display: none; }
+  .dpa-railright > * { flex: 1 0 240px; min-width: 240px; }
   .dpa-main { padding: 22px 24px 34px; }
+  /* narrow: the sheet head gives way to the list */
+  .dpa-sheethead { padding-right: 168px; }
+  .dpa-h1 { font-size: 40px !important; letter-spacing: -0.03em !important; }
+  .dpa-plate { width: 156px; height: 96px; padding: 10px 12px 9px 16px; }
+  .dpa-plate b { font-size: 52px; }
+  .dpa-band { display: none; }
+  .dpa-lede { font-size: 11px !important; max-width: 40ch; }
 }
 
 @container (max-width: 820px) {
