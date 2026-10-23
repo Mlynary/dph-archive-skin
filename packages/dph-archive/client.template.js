@@ -1479,10 +1479,15 @@ window.__ModuleLoader__.load({
             } catch (e) { /* no workspace service */ }
           },
         };
-        const figures = [
-          [copy.counters.entries, String(rowsAll.length).padStart(2, '0')],
-          [copy.counters.locked, String(rowsAll.filter((r) => r.state === 'LOCK').length).padStart(2, '0')],
-          [copy.counters.live, String(rowsAll.filter((r) => r.state === 'LIVE').length).padStart(2, '0')],
+        const pad2 = (n) => String(n).padStart(2, '0');
+        const figures = live ? [
+          [loc === 'zh' ? '会话' : 'SESSIONS', pad2(live.length)],
+          [loc === 'zh' ? '在线' : 'RUNNING', pad2(live.filter((r) => r.running).length)],
+          [loc === 'zh' ? '工作区' : 'WORKSPACES', pad2(new Set(live.map((r) => r.workspace)).size)],
+        ] : [
+          [copy.counters.entries, pad2(rowsAll.length)],
+          [copy.counters.locked, pad2(rowsAll.filter((r) => r.state === 'LOCK').length)],
+          [copy.counters.live, pad2(rowsAll.filter((r) => r.state === 'LIVE').length)],
         ];
         const counts = {
           index: ARCHIVE.length || FALLBACK_ARCHIVE.length,
@@ -1602,11 +1607,19 @@ window.__ModuleLoader__.load({
         const main = h('main', { className: 'dpa-main' },
           h('i', { className: 'dpa-scan', key: 'scan-' + active.id, 'aria-hidden': true }),
           div('dpa-sheethead',
-            div('dpa-eyebrow', h('i', null), active.no + ' / ' + metaText[active.id]),
+            div('dpa-eyebrow', h('i', null),
+              active.no + ' / ' + (live && active.id === 'index'
+                ? pad2(live.length) + (loc === 'zh' ? ' 会话' : ' SESSIONS')
+                : metaText[active.id])),
             h('h1', { className: 'dpa-h1', 'aria-label': titlePair.primary },
               h('span', { className: 'dpa-h1text', 'aria-hidden': true }, shownTitle),
               h('small', null, titlePair.secondary)),
-            h('p', { className: 'dpa-lede' }, copy[active.lede] || ''),
+            h('p', { className: 'dpa-lede' },
+              live && active.id === 'index'
+                ? (loc === 'zh'
+                  ? '本机全部会话的索引：标题、所属工作区与运行状态，点选一行在右侧查看并操作。'
+                  : 'Every session on this machine: title, workspace and state. Select a row to inspect it on the right.')
+                : (copy[active.lede] || '')),
             divx({ className: 'dpa-plate', 'aria-hidden': true },
               h('b', null, active.no),
               span(null, active.code))),
