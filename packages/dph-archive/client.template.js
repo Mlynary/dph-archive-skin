@@ -2328,11 +2328,29 @@ button[class*="_newSession"]:hover svg {
   pointer-events: none;
 }
 [data-row-key^="session:"][aria-selected="true"]::before { opacity: 0.75; }
+/* workspace rows keep the app face: mono tracking on Chinese reads as noise */
 [data-row-key^="workspace:"] {
-  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace !important;
-  letter-spacing: 0.14em !important;
-  text-transform: uppercase;
-  opacity: 0.8;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+}
+[data-row-key^="workspace:"]::after {
+  content: attr(data-dph-count);
+  margin-left: 6px;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+}
+[class*="groupSection"] {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+[class*="groupSection"]:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
 }
 [data-rightbar-col] { background: var(--dsw-alias-bg-base) !important; }
 [data-dockkit-surface], [data-dockkit-pane] { background: transparent !important; }
@@ -2773,6 +2791,60 @@ button[class*="_newSession"]:hover svg {
           }
         }, true);
       } catch (e) { /* no keyboard */ }
+    }
+
+    // Sidebar index: count the sessions that follow each workspace row, so the
+    // group header can carry its own tally like a file divider.
+    function decorateSidebar(ctx) {
+      if (typeof document === 'undefined') return;
+      const paint = () => {
+        try {
+          const rows = document.querySelectorAll('[data-row-key]');
+          let current = null;
+          let tally = 0;
+          const flush = () => {
+            if (!current) return;
+            const value = ('0' + tally).slice(-2);
+            if (current.getAttribute('data-dph-count') !== value) {
+              current.setAttribute('data-dph-count', value);
+            }
+          };
+          for (let i = 0; i < rows.length; i += 1) {
+            const row = rows[i];
+            const key = row.getAttribute('data-row-key') || '';
+            if (key.indexOf('workspace:') === 0) {
+              flush();
+              current = row;
+              tally = 0;
+            } else if (key.indexOf('session:') === 0 && current) {
+              tally += 1;
+            }
+          }
+          flush();
+        } catch (e) { /* keep watching */ }
+      };
+      paint();
+      const timer = setInterval(paint, 2000);
+      let observer = null;
+      try {
+        if (typeof MutationObserver === 'function' && document.body) {
+          let queued = false;
+          observer = new MutationObserver(() => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => { queued = false; paint(); });
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+      } catch (e) { /* no observer */ }
+      try {
+        if (typeof ctx.effect === 'function') {
+          ctx.effect(() => () => {
+            clearInterval(timer);
+            if (observer) observer.disconnect();
+          });
+        }
+      } catch (e) { /* keep the timer */ }
     }
 
     // Small typographic details that need a DOM hook: index plates on the
@@ -3288,6 +3360,7 @@ input, select, textarea {
         decorateSettings(ctx);
         decorateChat(ctx);
         decorateHero(ctx);
+        decorateSidebar(ctx);
 
         // ---- 9. status corner --------------------------------------
         slot('shell.overlay', { name: 'shell.overlay', id: 'dph-status', order: 95 }, StatusCorner);
