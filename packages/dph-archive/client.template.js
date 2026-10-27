@@ -31,6 +31,41 @@ window.__ModuleLoader__.load({
     const span = (cls, ...kids) => h('span', cls ? { className: cls } : null, ...kids);
     const divx = (props, ...kids) => h('div', props, ...kids);
 
+    // Watch only the subtree that can actually change, never the whole body:
+    // a body-wide observer queues a record for every keystroke and every
+    // streamed token, which is what made typing and clicks feel stuck.
+    const watchDom = (getRoot, paint, everyMs) => {
+      let observer = null;
+      let observed = null;
+      const attach = () => {
+        try {
+          const root = getRoot();
+          if (!root || root === observed) return;
+          if (observer) observer.disconnect();
+          let queued = false;
+          observer = new MutationObserver(() => {
+            if (queued) return;
+            queued = true;
+            setTimeout(() => {
+              queued = false;
+              if (!document.hidden) paint();
+            }, 320);
+          });
+          observer.observe(root, { childList: true, subtree: true });
+          observed = root;
+        } catch (e) { /* no observer */ }
+      };
+      paint();
+      attach();
+      const tick = setInterval(paint, everyMs);
+      const reattach = setInterval(attach, 2000);
+      return () => {
+        clearInterval(tick);
+        clearInterval(reattach);
+        if (observer) observer.disconnect();
+      };
+    };
+
     // ------------------------------------------------------------------
     // Copy
     // ------------------------------------------------------------------
@@ -1774,8 +1809,7 @@ body::after {
   inset: 0;
   z-index: 2147483000;
   pointer-events: none;
-  opacity: 0.6;
-  mix-blend-mode: multiply;
+  opacity: 0.42;
   background-image:
     repeating-linear-gradient(to bottom, rgba(11, 15, 13, 0.03) 0 1px, transparent 1px 4px),
     radial-gradient(130% 92% at 50% 0%, transparent 54%, rgba(11, 15, 13, 0.07) 100%),
@@ -1785,8 +1819,7 @@ body::after {
 }
 
 html[data-dph-skin="dark"] body::after {
-  mix-blend-mode: screen;
-  opacity: 0.42;
+  opacity: 0.3;
   background-image:
     repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.02) 0 1px, transparent 1px 4px),
     radial-gradient(130% 92% at 50% 0%, transparent 58%, rgba(0, 0, 0, 0.55) 100%),
@@ -2893,27 +2926,13 @@ button[class*="_newSession"]:hover svg {
           flush();
         } catch (e) { /* keep watching */ }
       };
-      paint();
-      const timer = setInterval(paint, 2000);
-      let observer = null;
+      const stop = watchDom(
+        () => document.querySelector('[role="tree"]'),
+        paint,
+        2000
+      );
       try {
-        if (typeof MutationObserver === 'function' && document.body) {
-          let queued = false;
-          observer = new MutationObserver(() => {
-            if (queued) return;
-            queued = true;
-            setTimeout(() => { queued = false; paint(); }, 200);
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        }
-      } catch (e) { /* no observer */ }
-      try {
-        if (typeof ctx.effect === 'function') {
-          ctx.effect(() => () => {
-            clearInterval(timer);
-            if (observer) observer.disconnect();
-          });
-        }
+        if (typeof ctx.effect === 'function') ctx.effect(() => stop);
       } catch (e) { /* keep the timer */ }
     }
 
@@ -2957,28 +2976,16 @@ button[class*="_newSession"]:hover svg {
           }
         } catch (e) { /* keep the timer */ }
       };
-      paint();
-      const timer = setInterval(paint, 1500);
-      // A new turn should get its divider in the same frame it mounts.
-      let observer = null;
+      const stop = watchDom(
+        () => {
+          const first = document.querySelector('[data-chat-flow-key]');
+          return (first && first.parentElement) || null;
+        },
+        paint,
+        1500
+      );
       try {
-        if (typeof MutationObserver === 'function' && document.body) {
-          let queued = false;
-          observer = new MutationObserver(() => {
-            if (queued) return;
-            queued = true;
-            setTimeout(() => { queued = false; paint(); }, 200);
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        }
-      } catch (e) { /* no observer */ }
-      try {
-        if (typeof ctx.effect === 'function') {
-          ctx.effect(() => () => {
-            clearInterval(timer);
-            if (observer) observer.disconnect();
-          });
-        }
+        if (typeof ctx.effect === 'function') ctx.effect(() => stop);
       } catch (e) { /* keep the timer */ }
     }
 
@@ -3060,34 +3067,20 @@ button[class*="_newSession"]:hover svg {
       // it unmounts again when a session starts. paint() is a no-op while the
       // decoration is present, so this is one querySelector per tick.
       let misses = 0;
-      const timer = setInterval(() => {
+      const tick = () => {
         if (paint()) { misses = 0; return; }
         misses += 1;
         if (misses === 40) {
           try { document.documentElement.setAttribute('data-dph-hero', 'miss'); } catch (e) { /* ignore */ }
         }
-      }, 1200);
-      // React to the mount immediately instead of waiting for the next tick:
-      // opening a new session should decorate in the same frame.
-      let observer = null;
+      };
+      const stop = watchDom(
+        () => document.querySelector('[data-conversation-region]'),
+        tick,
+        1200
+      );
       try {
-        if (typeof MutationObserver === 'function' && document.body) {
-          let queued = false;
-          observer = new MutationObserver(() => {
-            if (queued) return;
-            queued = true;
-            setTimeout(() => { queued = false; if (paint()) misses = 0; }, 200);
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        }
-      } catch (e) { /* no observer */ }
-      try {
-        if (typeof ctx.effect === 'function') {
-          ctx.effect(() => () => {
-            clearInterval(timer);
-            if (observer) observer.disconnect();
-          });
-        }
+        if (typeof ctx.effect === 'function') ctx.effect(() => stop);
       } catch (e) { /* keep the timer */ }
     }
 
