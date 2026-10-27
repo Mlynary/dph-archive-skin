@@ -1794,45 +1794,36 @@ html[data-dph-skin="dark"] body::after {
     repeating-linear-gradient(to bottom, rgba(233, 229, 223, 0.045) 0 1px, transparent 1px 32px);
 }
 
-/* 9b. ambient light: one soft highlight drifts across the sheet, so the paper
-   is never a dead flat fill. 28s, alternate, composited - no layout work. */
+/* 9b. ambient light: one soft highlight drifts across the sheet. Plain alpha,
+   NOT a blend mode: blending the layer would pull the whole document (and the
+   grain layer's multiply) into one group and force a full-page composite on
+   every animation frame - that is what made scrolling and streaming stutter. */
 html[data-dph-skin]::after {
   content: "";
   position: fixed;
-  inset: -22%;
-  z-index: 2147482999;
+  inset: 0;
+  z-index: 2147482998;
   pointer-events: none;
   background:
-    radial-gradient(42% 34% at 32% 26%, rgba(255, 255, 255, 0.5), transparent 68%),
-    radial-gradient(30% 26% at 72% 78%, rgba(255, 255, 255, 0.28), transparent 70%);
-  mix-blend-mode: soft-light;
-  will-change: transform, opacity;
+    radial-gradient(46% 38% at 30% 24%, rgba(255, 255, 255, 0.42), transparent 70%),
+    radial-gradient(34% 30% at 74% 76%, rgba(255, 255, 255, 0.22), transparent 72%);
+  will-change: opacity;
   animation: dph-ambient 28s ease-in-out infinite alternate;
 }
 html[data-dph-skin="dark"]::after {
   background:
-    radial-gradient(42% 34% at 32% 26%, rgba(255, 186, 120, 0.14), transparent 68%),
-    radial-gradient(30% 26% at 72% 78%, rgba(120, 160, 255, 0.1), transparent 70%);
-  mix-blend-mode: screen;
+    radial-gradient(46% 38% at 30% 24%, rgba(255, 186, 120, 0.1), transparent 70%),
+    radial-gradient(34% 30% at 74% 76%, rgba(120, 160, 255, 0.07), transparent 72%);
 }
 @keyframes dph-ambient {
-  0% {
-    transform: translate3d(-5%, -3%, 0) scale(1);
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.85;
-  }
-  100% {
-    transform: translate3d(5%, 4%, 0) scale(1.1);
-    opacity: 0.5;
-  }
+  0% { opacity: 0.3; }
+  50% { opacity: 0.75; }
+  100% { opacity: 0.35; }
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-dph-skin]::after {
     animation: none;
-    opacity: 0.6;
-    transform: none;
+    opacity: 0.45;
   }
 }
 
@@ -2911,7 +2902,7 @@ button[class*="_newSession"]:hover svg {
           observer = new MutationObserver(() => {
             if (queued) return;
             queued = true;
-            requestAnimationFrame(() => { queued = false; paint(); });
+            setTimeout(() => { queued = false; paint(); }, 200);
           });
           observer.observe(document.body, { childList: true, subtree: true });
         }
@@ -2976,7 +2967,7 @@ button[class*="_newSession"]:hover svg {
           observer = new MutationObserver(() => {
             if (queued) return;
             queued = true;
-            requestAnimationFrame(() => { queued = false; paint(); });
+            setTimeout(() => { queued = false; paint(); }, 200);
           });
           observer.observe(document.body, { childList: true, subtree: true });
         }
@@ -3085,7 +3076,7 @@ button[class*="_newSession"]:hover svg {
           observer = new MutationObserver(() => {
             if (queued) return;
             queued = true;
-            requestAnimationFrame(() => { queued = false; if (paint()) misses = 0; });
+            setTimeout(() => { queued = false; if (paint()) misses = 0; }, 200);
           });
           observer.observe(document.body, { childList: true, subtree: true });
         }
