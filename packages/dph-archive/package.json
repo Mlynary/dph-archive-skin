@@ -1,8 +1,8 @@
 {
   "name": "dph-archive",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "DPH Archive OS - a technical-dossier panel for the DPH Web UI.",
+  "description": "DPH Archive OS - a technical-dossier skin for the DeepSeek Harness UI: paper surface, ink plates, sidebar index, turn dividers.",
   "type": "module",
   "exports": {
     ".": "./index.js",
